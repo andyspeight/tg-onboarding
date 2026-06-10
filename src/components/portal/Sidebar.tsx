@@ -26,7 +26,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Action plan", Icon: ClipboardCheckIcon },
   { href: "/details", label: "Your details", Icon: PencilIcon },
   { href: "/documents", label: "Documents", Icon: FolderIcon },
-  { href: null, label: "Training", Icon: BookIcon },
+  { href: "/training", label: "Training", Icon: BookIcon },
   { href: null, label: "Messages", Icon: ChatIcon },
 ];
 

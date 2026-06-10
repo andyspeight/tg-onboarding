@@ -9,6 +9,7 @@ import {
   phasesComplete,
   workloadStats,
 } from "@/lib/onboarding/progress";
+import { recordEngagement } from "@/lib/onboarding/engagement";
 import { WelcomeHero } from "./WelcomeHero";
 import { QuickStats } from "./QuickStats";
 import { FilterBar, type TaskFilter } from "./FilterBar";
@@ -40,6 +41,7 @@ export function Portal({ journey }: { journey: OnboardingJourney }) {
   const active = useMemo(() => currentPhase(phases), [phases]);
 
   function cycleTask(phaseId: string, taskId: string) {
+    recordEngagement("task-updated", taskId);
     setPhases((prev) =>
       prev.map((phase) =>
         phase.id !== phaseId
@@ -108,7 +110,10 @@ export function Portal({ journey }: { journey: OnboardingJourney }) {
                   <ConfidenceGate
                     gate={phase.gate}
                     value={confidence}
-                    onChange={setConfidence}
+                    onChange={(rating) => {
+                      recordEngagement("confidence-rated", String(rating));
+                      setConfidence(rating);
+                    }}
                   />
                 </div>
               )}

@@ -9,6 +9,7 @@ import {
   screenFiles,
   type UploadedFile,
 } from "@/lib/onboarding/uploads";
+import { recordEngagement } from "@/lib/onboarding/engagement";
 
 const STATUS_META: Record<
   DocumentStatus | "received",
@@ -88,7 +89,10 @@ export function DocumentHub({
   function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
     const { accepted, rejected } = screenFiles(files, DOCUMENT_EXTENSIONS);
-    if (accepted.length > 0) setUploads((prev) => [...prev, ...accepted]);
+    if (accepted.length > 0) {
+      recordEngagement("document-uploaded", `${accepted.length} files`);
+      setUploads((prev) => [...prev, ...accepted]);
+    }
     setError(
       rejected.length > 0 ? `We couldn’t add: ${rejected.join(", ")}` : null,
     );
