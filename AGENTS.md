@@ -18,7 +18,7 @@ It exists to solve the single biggest problem in the business: **post-go-live "w
 This is also the **first build being run in Claude Code as a trial** of moving development here. Treat it as a real product, not a throwaway.
 
 ## Status
-Phase 1 in progress. Next.js app scaffolded; Phase 1 screen 1 (welcome portal + seven-phase journey on mock data) built. Live state lives in the Projects Airtable (see below).
+Phase 1 in progress. Next.js app scaffolded; Phase 1 screen 1 (welcome portal + seven-phase journey on mock data) built, then reconciled against the approved prototype (`reference/onboarding-prototype.html`) — slice 1 (welcome landing, seven-phase journey, progress bar) aligned. Live state lives in the Projects Airtable (see below).
 
 ## Locked decisions — do NOT re-open these
 - **Build it ourselves** on the existing stack. We are *not* buying Dock / OnRamp / Userpilot (all benchmarked already).
@@ -44,7 +44,7 @@ Out of scope for Phase 1: the internal staff dashboard, real engagement-alert au
 - **Next.js** app (App Router, TypeScript, Tailwind v4 — note the managed rules block above: this is Next 16 with breaking changes; read `node_modules/next/dist/docs/` before writing Next code). Deployed on **Vercel** (team: agendasgroup).
 - **Airtable** as the backend/data store, in the same lightweight pattern as **Luna Marketing**. (Which Airtable base — new vs existing — is an open question; until decided, Phase 1 runs off local mock data behind a clean data layer so swapping in Airtable later is a one-file change — see `src/lib/onboarding/data.ts`.)
 - **Luna AI** as the contextual help layer — integration seam at `src/lib/luna/`.
-- Brand: Travelgenix navy/teal, Inter, light + dark. Match the existing product family. (Current brand tokens in `src/app/globals.css` are a tasteful approximation — tune against the real Travelgenix brand tokens when available.)
+- Brand: Inter, light + dark. Tokens in `src/app/globals.css` follow the approved prototype's palette (deep teal `#0D4F4F`, bright accent `#17A2B8` — see `reference/onboarding-prototype.html`); tune against the real Travelgenix brand tokens when available.
 
 ## How Andy works — follow these
 - **Staged builds, not big-bang.** Ship Phase 1 in reviewable slices. Surface only genuine decisions.
@@ -55,9 +55,9 @@ Out of scope for Phase 1: the internal staff dashboard, real engagement-alert au
 - **Security before ship.** Sandbox/dev only for now — **no live keys, no secrets in client-side code** (env vars only), validate and sanitise all input, lock down any API route.
 - **Client-facing copy** gets the humaniser treatment — warm, plain, no AI tells.
 
-## Skills to consult (once added to this repo's `.claude/skills/`)
+## Skills to consult (in this repo's `.claude/skills/`)
 `travelgenix-design`, `frontend-design`, `travelgenix-taste` (before any UI) · `travelgenix-security` (before and after any code) · `airtable-operations` (data layer) · `travelgenix-humanizer` (client copy) · `project-handover` (state).
-> ⚠️ As of this writing these skills are **not yet present** in the repo. Until they are ported into `.claude/skills/`, follow the inlined rules above. Porting them in is an open question (below).
+> ✅ All seven skills were ported into `.claude/skills/` on 10 Jun 2026 — consult them directly; the inlined rules above stay as a quick summary.
 
 ## State & handover
 Live project state — current focus, next steps, decisions log, open questions — lives in the **Projects Airtable** (base `appj9tksreHOwkhYg`, table `tblpyhPNhiQg3XkkT`, record `recgtZ7UP7ltoqced`). Keep it the source of truth across sessions.
@@ -65,7 +65,6 @@ Live project state — current focus, next steps, decisions log, open questions 
 ## Open questions (from project state)
 - Which Airtable base holds onboarding data — new base or reuse existing?
 - Integrate Travelgenix Control SSO in a later phase (not Phase 1)? — assumed yes.
-- Port Andy's skills into the repo (`.claude/skills`) for full parity, or rely on inlined rules for the trial?
 
 ## Local development
 ```bash
