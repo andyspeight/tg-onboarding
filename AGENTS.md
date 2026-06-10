@@ -42,7 +42,7 @@ Out of scope for Phase 1: the internal staff dashboard, real engagement-alert au
 
 ## Stack & architecture
 - **Next.js** app (App Router, TypeScript, Tailwind v4 — note the managed rules block above: this is Next 16 with breaking changes; read `node_modules/next/dist/docs/` before writing Next code). Deployed on **Vercel** (team: agendasgroup).
-- **Airtable** as the backend/data store, in the same lightweight pattern as **Luna Marketing**. (Which Airtable base — new vs existing — is an open question; until decided, Phase 1 runs off local mock data behind a clean data layer so swapping in Airtable later is a one-file change — see `src/lib/onboarding/data.ts`.)
+- **Airtable** as the backend/data store, in the same lightweight pattern as **Luna Marketing**. Base: **TG Onboarding** `appOSIsT3wpkTmit9` (decided + schema built 10 Jun 2026 — full table/field map in `.claude/skills/airtable-operations/SKILL.md`). The portal still reads local mock data behind `src/lib/onboarding/data.ts` until the scoped PAT lands in env; the swap is that one file.
 - **Luna AI** as the contextual help layer — integration seam at `src/lib/luna/`.
 - Brand: Inter, light + dark. Tokens in `src/app/globals.css` follow the approved prototype's palette (deep teal `#0D4F4F`, bright accent `#17A2B8` — see `reference/onboarding-prototype.html`); tune against the real Travelgenix brand tokens when available.
 
@@ -63,7 +63,6 @@ Out of scope for Phase 1: the internal staff dashboard, real engagement-alert au
 Live project state — current focus, next steps, decisions log, open questions — lives in the **Projects Airtable** (base `appj9tksreHOwkhYg`, table `tblpyhPNhiQg3XkkT`, record `recgtZ7UP7ltoqced`). Keep it the source of truth across sessions.
 
 ## Open questions (from project state)
-- Which Airtable base holds onboarding data — new base or reuse existing?
 - Integrate Travelgenix Control SSO in a later phase (not Phase 1)? — assumed yes.
 
 ## Local development
