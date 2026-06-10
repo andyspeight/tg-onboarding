@@ -8,7 +8,7 @@ The staff-facing half of the product: see every onboarding client's health at a 
 ## Decisions carried in (locked)
 - **Staff access** uses the existing Travelgenix Control SSO. **[Andy: share how it's integrated — repo, docs or endpoint — before slice 1.]**
 - **Clients do not go on SSO.** Staff create client logins from the dashboard and issue a password (simple credential login for the portal).
-- **Transactional email** goes through the existing Sendrif wiring used by other Travelgenix developments. **[Andy: point at where it's wired (which repo/env keys) so we reuse the pattern.]**
+- **Transactional email is SendGrid** (platform-wide convention — see `docs/integrations/email-sendgrid.md`): `@sendgrid/mail`, verified `travelify.io` sender with display name "Travelgenix", inline-HTML templates with no external images. Env on this Vercel project when the automation slice lands: `SENDGRID_API_KEY`, an onboarding from-email, `APP_BASE_URL`. Never Brevo (marketing-only) and no new providers. Seam already in place, stubbed, at `src/lib/email/`.
 - **Milestone emails are Phase 2** (anti-wilting, not a Phase 3 delight feature).
 - Anti-wilting rules from the original brief: nudges always reference a specific task; never a generic chase.
 
@@ -30,8 +30,9 @@ Computed from Last Active, Engagement Signals, task due dates and progress pace:
 Alerts fire on the *transition* into amber/red (no daily re-alerting), are logged, surfaced on the dashboard, and emailed to the account manager.
 
 ## Automation engine (scheduled job)
-- Task-specific reminders to the client: 2 days before a due date, and the day after one is missed. In-portal notification always; email via Sendrif.
+- Task-specific reminders to the client: 2 days before a due date, and the day after one is missed. In-portal notification always; email via SendGrid through the seam.
 - Milestone emails at 50% and 75% progress.
+- Welcome email on client creation (from the add-client flow, through the same seam).
 - Wilting alert emails to staff on health transitions.
 - Discipline: max one client email per day, UK working hours only, every send logged to the Automation Log.
 
