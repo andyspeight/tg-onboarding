@@ -30,9 +30,12 @@ const KIND_STYLE: Record<
 export function NotificationBell({
   notifications,
   tone = "default",
+  align = "right",
 }: {
   notifications: PortalNotification[];
   tone?: "default" | "onDark";
+  /** Which bell edge the panel hangs from — use "left" when the bell sits near the viewport's left edge (sidebar) so it opens inwards. */
+  align?: "left" | "right";
 }) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState(notifications);
@@ -95,7 +98,11 @@ export function NotificationBell({
         <div
           role="dialog"
           aria-label="Notifications"
-          className="anim-pop absolute right-0 top-11 z-50 w-[19rem] origin-top-right overflow-hidden rounded-card border border-border bg-surface text-left shadow-float sm:w-80"
+          className={`anim-pop absolute top-11 z-50 w-[19rem] overflow-hidden rounded-card border border-border bg-surface text-left shadow-float sm:w-80 ${
+            align === "left"
+              ? "left-0 origin-top-left"
+              : "right-0 origin-top-right"
+          }`}
         >
           <p className="border-b border-border px-4 py-3 text-[13px] font-bold text-fg">
             Notifications

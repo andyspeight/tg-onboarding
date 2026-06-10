@@ -63,7 +63,11 @@ export function Sidebar({
           </p>
         </div>
         <div className="flex items-center">
-          <NotificationBell notifications={notifications} tone="onDark" />
+          <NotificationBell
+            notifications={notifications}
+            tone="onDark"
+            align="left"
+          />
           <ThemeToggle tone="onDark" />
         </div>
       </div>
