@@ -19,7 +19,12 @@ export default async function TrainingPage() {
         step of your journey. Tick things off as you go.
       </p>
 
-      <TrainingHub phases={journey.phases} className="mt-6" />
+      <TrainingHub
+        phases={journey.phases}
+        completed={journey.trainingCompleted}
+        live={journey.source === "airtable"}
+        className="mt-6"
+      />
     </div>
   );
 }

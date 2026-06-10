@@ -9,7 +9,6 @@ import {
 } from "@/components/icons";
 import { ProgressBar } from "@/components/ProgressBar";
 import type { JourneyPhase, TrainingResource } from "@/lib/onboarding/types";
-import { recordEngagement } from "@/lib/onboarding/engagement";
 
 function TrainingCard({
   item,
@@ -91,13 +90,18 @@ function TrainingCard({
 /**
  * The Training tab: every video and guide from the journey in one place,
  * grouped by the phase it belongs to, with per-item completion tracked.
- * Completion lives in memory for Phase 1 and counts as an engagement signal.
+ * Ticks are optimistic and persist to Airtable when live; on failure they
+ * roll back with a plain explanation.
  */
 export function TrainingHub({
   phases,
+  completed,
+  live,
   className = "",
 }: {
   phases: JourneyPhase[];
+  completed: string[];
+  live: boolean;
   className?: string;
 }) {
   const sections = useMemo(
@@ -109,17 +113,34 @@ export function TrainingHub({
     [sections],
   );
 
-  const [done, setDone] = useState<Record<string, boolean>>({});
+  const [done, setDone] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(completed.map((id) => [id, true])),
+  );
+  const [saveError, setSaveError] = useState<string | null>(null);
   const doneCount = allItems.filter((item) => done[item.id]).length;
   const pct =
     allItems.length === 0 ? 0 : Math.round((doneCount / allItems.length) * 100);
 
   function toggle(id: string) {
-    setDone((prev) => {
-      const next = { ...prev, [id]: !prev[id] };
-      if (next[id]) recordEngagement("training-completed", id);
-      return next;
-    });
+    const nextDone = !done[id];
+    setDone((prev) => ({ ...prev, [id]: nextDone }));
+    setSaveError(null);
+    if (!live) return;
+
+    fetch("/api/training", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ trainingId: id, done: nextDone }),
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error(String(response.status));
+      })
+      .catch(() => {
+        setDone((prev) => ({ ...prev, [id]: !nextDone }));
+        setSaveError(
+          "That last tick didn’t save. Check your connection and try again.",
+        );
+      });
   }
 
   if (sections.length === 0) {
@@ -146,7 +167,11 @@ export function TrainingHub({
         className="mt-1.5"
       />
 
-      <div className="mt-6 space-y-7">
+      <p aria-live="polite" className="mt-2 text-[13px] font-medium text-danger">
+        {saveError}
+      </p>
+
+      <div className="mt-4 space-y-7">
         {sections.map((phase) => (
           <section key={phase.id}>
             <h2 className="mb-2.5 flex items-center gap-2.5">

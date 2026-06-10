@@ -104,40 +104,120 @@ function Field({
   );
 }
 
+/** A section counts as saved when its required fields (or anything) exist. */
+function initialSaved(
+  sections: IntakeSection[],
+  responses: Record<string, string>,
+): Record<string, boolean> {
+  const saved: Record<string, boolean> = {};
+  for (const section of sections) {
+    const required = section.fields.filter((field) => field.required);
+    const answered = section.fields.filter(
+      (field) => (responses[field.id] ?? "") !== "",
+    );
+    saved[section.id] =
+      required.length > 0
+        ? required.every((field) => (responses[field.id] ?? "") !== "")
+        : answered.length > 0;
+  }
+  return saved;
+}
+
 /**
  * The smart intake form from the prototype: accordion sections, save and
  * continue, per-section completion. Sections are already filtered to the
- * client's package tier server-side. Required fields use native validation,
- * so the browser flags and focuses the first gap on save. Responses live in
- * memory for Phase 1 — persistence arrives with the Airtable swap.
+ * client's package tier server-side, and saved answers prefill from
+ * Airtable. Required fields use native validation, so the browser flags and
+ * focuses the first gap on save.
  */
 export function IntakeForm({
   sections,
+  responses,
+  live,
   className = "",
 }: {
   sections: IntakeSection[];
+  responses: Record<string, string>;
+  live: boolean;
   className?: string;
 }) {
-  const [values, setValues] = useState<Record<string, string>>({});
-  const [selections, setSelections] = useState<Record<string, string[]>>({});
+  const [values, setValues] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {};
+    for (const section of sections) {
+      for (const field of section.fields) {
+        if (field.type === "multiselect" || field.type === "upload") continue;
+        if (responses[field.id]) initial[field.id] = responses[field.id];
+      }
+    }
+    return initial;
+  });
+  const [selections, setSelections] = useState<Record<string, string[]>>(() => {
+    const initial: Record<string, string[]> = {};
+    for (const section of sections) {
+      for (const field of section.fields) {
+        if (field.type !== "multiselect" || !responses[field.id]) continue;
+        initial[field.id] = responses[field.id].split(", ").filter(Boolean);
+      }
+    }
+    return initial;
+  });
   const [files, setFiles] = useState<Record<string, UploadedFile[]>>({});
-  const [saved, setSaved] = useState<Record<string, boolean>>({});
-  const [expandedId, setExpandedId] = useState<string | null>(
-    sections[0]?.id ?? null,
+  const [saved, setSaved] = useState<Record<string, boolean>>(() =>
+    initialSaved(sections, responses),
   );
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [errorId, setErrorId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(() => {
+    const firstUnsaved = sections.find(
+      (section) => !initialSaved(sections, responses)[section.id],
+    );
+    return firstUnsaved?.id ?? sections[0]?.id ?? null;
+  });
 
   const savedCount = sections.filter((section) => saved[section.id]).length;
   const allSaved = savedCount === sections.length;
   const pct =
     sections.length === 0 ? 0 : Math.round((savedCount / sections.length) * 100);
 
-  function saveSection(sectionId: string) {
+  function markSavedAndAdvance(sectionId: string) {
     setSaved((prev) => ({ ...prev, [sectionId]: true }));
     const index = sections.findIndex((section) => section.id === sectionId);
     const next = sections
       .slice(index + 1)
       .find((section) => !saved[section.id]);
     setExpandedId(next?.id ?? null);
+  }
+
+  function saveSection(sectionId: string) {
+    setErrorId(null);
+    if (!live) {
+      markSavedAndAdvance(sectionId);
+      return;
+    }
+
+    const section = sections.find((item) => item.id === sectionId);
+    if (!section) return;
+    const payload: Record<string, string | string[]> = {};
+    for (const field of section.fields) {
+      if (field.type === "upload") continue;
+      payload[field.id] =
+        field.type === "multiselect"
+          ? (selections[field.id] ?? [])
+          : (values[field.id] ?? "");
+    }
+
+    setSavingId(sectionId);
+    fetch("/api/intake", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sectionId, values: payload }),
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error(String(response.status));
+        markSavedAndAdvance(sectionId);
+      })
+      .catch(() => setErrorId(sectionId))
+      .finally(() => setSavingId(null));
   }
 
   return (
@@ -245,12 +325,22 @@ export function IntakeForm({
                       </div>
                     ))}
                   </div>
-                  <div className="flex justify-end pt-5">
+                  <div className="flex items-center justify-end gap-3 pt-5">
+                    {errorId === section.id && (
+                      <p aria-live="polite" className="text-[12px] font-medium text-danger">
+                        That didn’t save. Try again in a moment.
+                      </p>
+                    )}
                     <button
                       type="submit"
-                      className="press h-10 cursor-pointer rounded-md bg-accent px-6 text-sm font-semibold text-accent-contrast transition-colors hover:bg-accent-strong"
+                      disabled={savingId === section.id}
+                      className="press h-10 cursor-pointer rounded-md bg-accent px-6 text-sm font-semibold text-accent-contrast transition-colors hover:bg-accent-strong disabled:cursor-default disabled:opacity-60"
                     >
-                      {isSaved ? "Update" : "Save & continue"}
+                      {savingId === section.id
+                        ? "Saving..."
+                        : isSaved
+                          ? "Update"
+                          : "Save & continue"}
                     </button>
                   </div>
                 </form>

@@ -262,6 +262,9 @@ export function makeMockJourney(): OnboardingJourney {
   return {
     source: "mock",
     asOf,
+    intakeResponses: {},
+    trainingCompleted: [],
+    confidence: null,
     client: {
       company: "Wanderlust Travel",
       contactName: "Sarah Mitchell",

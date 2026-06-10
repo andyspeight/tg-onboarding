@@ -162,4 +162,10 @@ export interface OnboardingJourney {
   /** Smart intake form definition. Tier filtering happens in the data layer. */
   intake: IntakeSection[];
   documents: ClientDocument[];
+  /** Saved intake answers, keyed by field id (multi-selects comma-joined). */
+  intakeResponses: Record<string, string>;
+  /** Training items this client has marked done. */
+  trainingCompleted: string[];
+  /** Latest confidence self-rating, if any. */
+  confidence: number | null;
 }

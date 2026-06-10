@@ -19,7 +19,12 @@ export default async function DetailsPage() {
         Tell us about your business so we can tailor everything.
       </p>
 
-      <IntakeForm sections={journey.intake} className="mt-6" />
+      <IntakeForm
+        sections={journey.intake}
+        responses={journey.intakeResponses}
+        live={journey.source === "airtable"}
+        className="mt-6"
+      />
     </div>
   );
 }

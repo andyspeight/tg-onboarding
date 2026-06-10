@@ -16,13 +16,13 @@ import { INTAKE_SECTIONS } from "./mock-data";
 import { ukToday } from "./dates";
 
 /**
- * Airtable read layer for the TG Onboarding base (appOSIsT3wpkTmit9).
+ * Airtable layer for the TG Onboarding base (appOSIsT3wpkTmit9).
  *
- * SERVER-SIDE ONLY. This module is reached exclusively through `data.ts`,
- * which only server components import — the PAT must never appear in any
- * client bundle. Credentials come from env (AIRTABLE_PAT, AIRTABLE_BASE_ID);
- * when they're absent or Airtable errors, callers fall back to mock data so
- * the portal always renders.
+ * SERVER-SIDE ONLY. This module is reached exclusively through `data.ts` and
+ * the API routes — the PAT must never appear in any client bundle.
+ * Credentials come from env (AIRTABLE_PAT, AIRTABLE_BASE_ID); when they're
+ * absent or Airtable errors, read callers fall back to mock data so the
+ * portal always renders, and write callers respond 503.
  *
  * Table and field IDs mirror `.claude/skills/airtable-operations/SKILL.md`
  * section 9. IDs, not names, so renames in Airtable can't break the portal.
@@ -36,8 +36,12 @@ const TABLES = {
   suppliers: "tblzkvTGKU8dHbwz2",
   tasks: "tblrqtEreCM7lF03k",
   training: "tbleBDB9oqkGpxt1t",
+  trainingCompletions: "tblPuZGHHSs9Au7JL",
   documents: "tblmnJ1x0av9sQw0N",
   notifications: "tblx5z4eV3YGWaEBq",
+  intakeResponses: "tblUN366QbH6fugHP",
+  confidenceRatings: "tbl1mfOO84zYhnpYR",
+  engagementSignals: "tblUJTgxwcjzGvaRd",
 };
 
 const CLIENT_F = {
@@ -46,6 +50,7 @@ const CLIENT_F = {
   package: "fldOf62P3opdqJ5Gx",
   started: "fldiMG1sZjsRxJuer",
   accountManager: "fld4D5xpWTRS7sMUb",
+  lastActive: "fldUegCPTvsPnK5pG",
 };
 
 const PHASE_F = {
@@ -82,6 +87,13 @@ const TRAINING_F = {
   order: "fld8UzTmkTmQVGNVK",
 };
 
+const COMPLETION_F = {
+  label: "fldgmLJgNgpcdDHlt",
+  client: "flds3wjXgGW3DHbU8",
+  training: "fldYTglsiFSFO8u7M",
+  completedAt: "fldkeu7S7Sg0UEMRH",
+};
+
 const DOC_F = {
   name: "fldpSycVlG2NNZQdG",
   category: "fld7lTn5nlUCPKCIs",
@@ -103,9 +115,41 @@ const SUPPLIER_F = {
   active: "fldzPuJyXXsoCylu8",
 };
 
+const RESPONSE_F = {
+  field: "fldEZjLopyUYE1RNg",
+  client: "fldwFb8EDZWL0dLFs",
+  value: "fldJcLBqUo1h9NLnl",
+  updated: "fldNvFO4u1LCj5DXh",
+};
+
+const CONFIDENCE_F = {
+  score: "fldVQVnDl3N9gKWvI",
+  client: "fldyQlCaXeSebXLYL",
+  ratedAt: "fldP0r0xkmpnqKHSS",
+};
+
+const SIGNAL_F = {
+  signal: "fldg21Xnjh6Oe4oKQ",
+  client: "flddwqkBckrZ7mQfW",
+  detail: "fldeJqb0V3NuO1JDI",
+  at: "fld8t9v2Y8VJZnTym",
+};
+
 interface AirtableRecord {
   id: string;
   fields: Record<string, unknown>;
+}
+
+interface AirtableConfig {
+  pat: string;
+  baseId: string;
+}
+
+/** Null when the integration isn't configured (e.g. local dev without env). */
+export function airtableConfig(): AirtableConfig | null {
+  const pat = process.env.AIRTABLE_PAT;
+  const baseId = process.env.AIRTABLE_BASE_ID;
+  return pat && baseId ? { pat, baseId } : null;
 }
 
 function str(record: AirtableRecord, fieldId: string): string {
@@ -122,15 +166,35 @@ function bool(record: AirtableRecord, fieldId: string): boolean {
   return record.fields[fieldId] === true;
 }
 
-function firstLink(record: AirtableRecord, fieldId: string): string {
+function links(record: AirtableRecord, fieldId: string): string[] {
   const value = record.fields[fieldId];
-  return Array.isArray(value) && typeof value[0] === "string" ? value[0] : "";
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+function firstLink(record: AirtableRecord, fieldId: string): string {
+  return links(record, fieldId)[0] ?? "";
+}
+
+async function airtableFetch(
+  config: AirtableConfig,
+  path: string,
+  init?: RequestInit,
+): Promise<Response> {
+  return fetch(`${API_URL}/${config.baseId}/${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${config.pat}`,
+      ...(init?.body ? { "Content-Type": "application/json" } : {}),
+      ...init?.headers,
+    },
+  });
 }
 
 /** Fetch every record from a table, following pagination. */
 async function listAll(
-  pat: string,
-  baseId: string,
+  config: AirtableConfig,
   tableId: string,
 ): Promise<AirtableRecord[]> {
   const records: AirtableRecord[] = [];
@@ -140,9 +204,7 @@ async function listAll(
     const params = new URLSearchParams({ returnFieldsByFieldId: "true" });
     if (offset) params.set("offset", offset);
 
-    const response = await fetch(`${API_URL}/${baseId}/${tableId}?${params}`, {
-      headers: { Authorization: `Bearer ${pat}` },
-    });
+    const response = await airtableFetch(config, `${tableId}?${params}`);
     if (!response.ok) {
       throw new Error(`Airtable ${tableId} responded ${response.status}`);
     }
@@ -156,6 +218,82 @@ async function listAll(
   } while (offset);
 
   return records;
+}
+
+/** Fetch one record by id; null when it doesn't exist. */
+export async function getRecord(
+  config: AirtableConfig,
+  tableId: string,
+  recordId: string,
+): Promise<AirtableRecord | null> {
+  const response = await airtableFetch(
+    config,
+    `${tableId}/${recordId}?returnFieldsByFieldId=true`,
+  );
+  if (response.status === 404 || response.status === 403) return null;
+  if (!response.ok) {
+    throw new Error(`Airtable ${tableId} responded ${response.status}`);
+  }
+  return (await response.json()) as AirtableRecord;
+}
+
+async function updateRecord(
+  config: AirtableConfig,
+  tableId: string,
+  recordId: string,
+  fields: Record<string, unknown>,
+): Promise<void> {
+  const response = await airtableFetch(config, `${tableId}/${recordId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ fields, typecast: true }),
+  });
+  if (!response.ok) {
+    throw new Error(`Airtable update ${tableId} responded ${response.status}`);
+  }
+}
+
+async function createRecords(
+  config: AirtableConfig,
+  tableId: string,
+  records: Record<string, unknown>[],
+): Promise<void> {
+  const response = await airtableFetch(config, tableId, {
+    method: "POST",
+    body: JSON.stringify({
+      records: records.map((fields) => ({ fields })),
+      typecast: true,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Airtable create ${tableId} responded ${response.status}`);
+  }
+}
+
+async function updateRecords(
+  config: AirtableConfig,
+  tableId: string,
+  records: { id: string; fields: Record<string, unknown> }[],
+): Promise<void> {
+  const response = await airtableFetch(config, tableId, {
+    method: "PATCH",
+    body: JSON.stringify({ records, typecast: true }),
+  });
+  if (!response.ok) {
+    throw new Error(`Airtable update ${tableId} responded ${response.status}`);
+  }
+}
+
+async function deleteRecord(
+  config: AirtableConfig,
+  tableId: string,
+  recordId: string,
+): Promise<void> {
+  const response = await airtableFetch(config, `${tableId}/${recordId}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    throw new Error(`Airtable delete ${tableId} responded ${response.status}`);
+  }
 }
 
 function asOwner(value: string): TaskOwner {
@@ -248,24 +386,29 @@ function intakeWithLiveSuppliers(
  * the portal keeps rendering.
  */
 export async function fetchJourneyFromAirtable(): Promise<OnboardingJourney | null> {
-  const pat = process.env.AIRTABLE_PAT;
-  const baseId = process.env.AIRTABLE_BASE_ID;
-  if (!pat || !baseId) return null;
+  const config = airtableConfig();
+  if (!config) return null;
 
   try {
-    // Two waves to stay inside Airtable's 5 requests/second per base.
+    // Three waves to stay inside Airtable's 5 requests/second per base.
     const [clients, phaseRecords, taskRecords, trainingRecords] =
       await Promise.all([
-        listAll(pat, baseId, TABLES.clients),
-        listAll(pat, baseId, TABLES.phases),
-        listAll(pat, baseId, TABLES.tasks),
-        listAll(pat, baseId, TABLES.training),
+        listAll(config, TABLES.clients),
+        listAll(config, TABLES.phases),
+        listAll(config, TABLES.tasks),
+        listAll(config, TABLES.training),
       ]);
     const [documentRecords, notificationRecords, supplierRecords] =
       await Promise.all([
-        listAll(pat, baseId, TABLES.documents),
-        listAll(pat, baseId, TABLES.notifications),
-        listAll(pat, baseId, TABLES.suppliers),
+        listAll(config, TABLES.documents),
+        listAll(config, TABLES.notifications),
+        listAll(config, TABLES.suppliers),
+      ]);
+    const [completionRecords, responseRecords, confidenceRecords] =
+      await Promise.all([
+        listAll(config, TABLES.trainingCompletions),
+        listAll(config, TABLES.intakeResponses),
+        listAll(config, TABLES.confidenceRatings),
       ]);
 
     const clientRecord = clients[0];
@@ -373,6 +516,22 @@ export async function fetchJourneyFromAirtable(): Promise<OnboardingJourney | nu
         read: bool(record, NOTIF_F.read),
       }));
 
+    const intakeResponses: Record<string, string> = {};
+    for (const record of responseRecords) {
+      const fieldId = str(record, RESPONSE_F.field);
+      if (fieldId) intakeResponses[fieldId] = str(record, RESPONSE_F.value);
+    }
+
+    const trainingCompleted = completionRecords
+      .map((record) => firstLink(record, COMPLETION_F.training))
+      .filter(Boolean);
+
+    const latestConfidence = [...confidenceRecords].sort(
+      (a, b) =>
+        Date.parse(str(b, CONFIDENCE_F.ratedAt)) -
+        Date.parse(str(a, CONFIDENCE_F.ratedAt)),
+    )[0];
+
     return {
       source: "airtable",
       asOf: ukToday(),
@@ -381,10 +540,178 @@ export async function fetchJourneyFromAirtable(): Promise<OnboardingJourney | nu
       notifications,
       intake: intakeWithLiveSuppliers(supplierRecords),
       documents,
+      intakeResponses,
+      trainingCompleted,
+      confidence: latestConfidence
+        ? num(latestConfidence, CONFIDENCE_F.score)
+        : null,
     };
   } catch (error) {
     // Server log only; the caller serves mock data so the portal stays up.
     console.error("[onboarding/airtable] read failed, serving mock data:", error);
     return null;
   }
+}
+
+/* ------------------------------------------------------------------------ */
+/* Writes — used only by the validated API routes.                          */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * Phase 1 is single-tenant: routes resolve the demo client server-side and
+ * never trust a client id from the browser. Real auth replaces this lookup
+ * in a later phase.
+ */
+export async function getPortalClientId(
+  config: AirtableConfig,
+): Promise<string | null> {
+  const clients = await listAll(config, TABLES.clients);
+  return clients[0]?.id ?? null;
+}
+
+/** Append an engagement signal and bump the client's Last Active. */
+export async function recordSignalAndTouch(
+  config: AirtableConfig,
+  clientId: string,
+  signal: string,
+  detail: string,
+): Promise<void> {
+  const now = new Date().toISOString();
+  try {
+    await createRecords(config, TABLES.engagementSignals, [
+      {
+        [SIGNAL_F.signal]: signal,
+        [SIGNAL_F.client]: [clientId],
+        [SIGNAL_F.detail]: detail.slice(0, 200),
+        [SIGNAL_F.at]: now,
+      },
+    ]);
+    await updateRecord(config, TABLES.clients, clientId, {
+      [CLIENT_F.lastActive]: now,
+    });
+  } catch (error) {
+    // Signals are telemetry: never fail the user's action over them.
+    console.error("[onboarding/airtable] signal write failed:", error);
+  }
+}
+
+/**
+ * Set a task's status — only if the task belongs to the portal client, is
+ * client-facing and isn't Travelgenix-owned. Returns false when the task
+ * fails those checks.
+ */
+export async function setTaskStatus(
+  config: AirtableConfig,
+  clientId: string,
+  taskId: string,
+  status: TaskStatus,
+): Promise<boolean> {
+  const task = await getRecord(config, TABLES.tasks, taskId);
+  if (
+    !task ||
+    !links(task, TASK_F.client).includes(clientId) ||
+    asAudience(str(task, TASK_F.audience)) !== "client" ||
+    asOwner(str(task, TASK_F.owner)) === "travelgenix"
+  ) {
+    return false;
+  }
+  await updateRecord(config, TABLES.tasks, taskId, {
+    [TASK_F.status]: status,
+  });
+  return true;
+}
+
+/** Upsert one intake section's answers as one row per field. */
+export async function saveIntakeResponses(
+  config: AirtableConfig,
+  clientId: string,
+  values: Record<string, string>,
+): Promise<void> {
+  const existing = await listAll(config, TABLES.intakeResponses);
+  const byField = new Map(
+    existing
+      .filter((record) => links(record, RESPONSE_F.client).includes(clientId))
+      .map((record) => [str(record, RESPONSE_F.field), record.id]),
+  );
+
+  const now = new Date().toISOString();
+  const updates: { id: string; fields: Record<string, unknown> }[] = [];
+  const creates: Record<string, unknown>[] = [];
+
+  for (const [fieldId, value] of Object.entries(values)) {
+    const recordId = byField.get(fieldId);
+    if (recordId) {
+      updates.push({
+        id: recordId,
+        fields: { [RESPONSE_F.value]: value, [RESPONSE_F.updated]: now },
+      });
+    } else {
+      creates.push({
+        [RESPONSE_F.field]: fieldId,
+        [RESPONSE_F.client]: [clientId],
+        [RESPONSE_F.value]: value,
+        [RESPONSE_F.updated]: now,
+      });
+    }
+  }
+
+  if (updates.length > 0) {
+    await updateRecords(config, TABLES.intakeResponses, updates);
+  }
+  if (creates.length > 0) {
+    await createRecords(config, TABLES.intakeResponses, creates);
+  }
+}
+
+/** Record a confidence self-rating (every rating is kept). */
+export async function saveConfidenceRating(
+  config: AirtableConfig,
+  clientId: string,
+  score: number,
+): Promise<void> {
+  await createRecords(config, TABLES.confidenceRatings, [
+    {
+      [CONFIDENCE_F.score]: score,
+      [CONFIDENCE_F.client]: [clientId],
+      [CONFIDENCE_F.ratedAt]: new Date().toISOString(),
+    },
+  ]);
+}
+
+/**
+ * Toggle a training completion. Returns false when the training item
+ * doesn't exist.
+ */
+export async function setTrainingCompletion(
+  config: AirtableConfig,
+  clientId: string,
+  trainingId: string,
+  done: boolean,
+): Promise<boolean> {
+  const training = await getRecord(config, TABLES.training, trainingId);
+  if (!training) return false;
+
+  const completions = await listAll(config, TABLES.trainingCompletions);
+  const mine = completions.filter(
+    (record) =>
+      links(record, COMPLETION_F.client).includes(clientId) &&
+      links(record, COMPLETION_F.training).includes(trainingId),
+  );
+
+  if (done && mine.length === 0) {
+    await createRecords(config, TABLES.trainingCompletions, [
+      {
+        [COMPLETION_F.label]: str(training, TRAINING_F.title).slice(0, 100),
+        [COMPLETION_F.client]: [clientId],
+        [COMPLETION_F.training]: [trainingId],
+        [COMPLETION_F.completedAt]: new Date().toISOString(),
+      },
+    ]);
+  }
+  if (!done) {
+    for (const record of mine) {
+      await deleteRecord(config, TABLES.trainingCompletions, record.id);
+    }
+  }
+  return true;
 }

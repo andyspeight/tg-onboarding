@@ -9,7 +9,6 @@ import {
   phasesComplete,
   workloadStats,
 } from "@/lib/onboarding/progress";
-import { recordEngagement } from "@/lib/onboarding/engagement";
 import { WelcomeHero } from "./WelcomeHero";
 import { QuickStats } from "./QuickStats";
 import { FilterBar, type TaskFilter } from "./FilterBar";
@@ -22,15 +21,23 @@ const CYCLE: Record<TaskStatus, TaskStatus> = {
   done: "todo",
 };
 
+const SAVE_ERROR =
+  "That last change didn’t save. Check your connection and try again.";
+
 /**
- * The interactive client portal. Holds the live journey state so cycling a
- * task or rating confidence updates progress immediately. Persistence is out of
- * scope for Phase 1 — this is the swap-in point for Airtable-backed mutations.
+ * The interactive client portal. Updates are optimistic: the screen responds
+ * instantly, the change persists to Airtable in the background, and on
+ * failure the change rolls back with a plain explanation. On mock data
+ * (no Airtable configured) everything stays local.
  */
 export function Portal({ journey }: { journey: OnboardingJourney }) {
+  const live = journey.source === "airtable";
   const [phases, setPhases] = useState(journey.phases);
   const [filter, setFilter] = useState<TaskFilter>("all");
-  const [confidence, setConfidence] = useState<number | null>(null);
+  const [confidence, setConfidence] = useState<number | null>(
+    journey.confidence,
+  );
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const overall = useMemo(() => overallProgress(phases), [phases]);
   const completeCount = useMemo(() => phasesComplete(phases), [phases]);
@@ -40,8 +47,7 @@ export function Portal({ journey }: { journey: OnboardingJourney }) {
   );
   const active = useMemo(() => currentPhase(phases), [phases]);
 
-  function cycleTask(phaseId: string, taskId: string) {
-    recordEngagement("task-updated", taskId);
+  function applyTaskStatus(phaseId: string, taskId: string, status: TaskStatus) {
     setPhases((prev) =>
       prev.map((phase) =>
         phase.id !== phaseId
@@ -49,13 +55,53 @@ export function Portal({ journey }: { journey: OnboardingJourney }) {
           : {
               ...phase,
               tasks: phase.tasks.map((task) =>
-                task.id === taskId
-                  ? { ...task, status: CYCLE[task.status] }
-                  : task,
+                task.id === taskId ? { ...task, status } : task,
               ),
             },
       ),
     );
+  }
+
+  function cycleTask(phaseId: string, taskId: string) {
+    const task = phases
+      .find((phase) => phase.id === phaseId)
+      ?.tasks.find((item) => item.id === taskId);
+    if (!task) return;
+
+    const previous = task.status;
+    const next = CYCLE[previous];
+    applyTaskStatus(phaseId, taskId, next);
+    setSaveError(null);
+    if (!live) return;
+
+    fetch("/api/task-status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taskId, status: next }),
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error(String(response.status));
+      })
+      .catch(() => {
+        applyTaskStatus(phaseId, taskId, previous);
+        setSaveError(SAVE_ERROR);
+      });
+  }
+
+  function rateConfidence(rating: number) {
+    setConfidence(rating);
+    setSaveError(null);
+    if (!live) return;
+
+    fetch("/api/confidence", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ score: rating }),
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error(String(response.status));
+      })
+      .catch(() => setSaveError(SAVE_ERROR));
   }
 
   // Owner filter, prototype-style: shared tasks show in both views, and a
@@ -92,6 +138,10 @@ export function Portal({ journey }: { journey: OnboardingJourney }) {
 
       <FilterBar filter={filter} onChange={setFilter} />
 
+      <p aria-live="polite" className="text-[13px] font-medium text-danger">
+        {saveError}
+      </p>
+
       <ol className="space-y-3.5">
         {visiblePhases.map((phase, index) => {
           // Mini bars always show true phase progress, not the filtered slice.
@@ -110,10 +160,7 @@ export function Portal({ journey }: { journey: OnboardingJourney }) {
                   <ConfidenceGate
                     gate={phase.gate}
                     value={confidence}
-                    onChange={(rating) => {
-                      recordEngagement("confidence-rated", String(rating));
-                      setConfidence(rating);
-                    }}
+                    onChange={rateConfidence}
                   />
                 </div>
               )}
