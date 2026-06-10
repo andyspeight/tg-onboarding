@@ -4,6 +4,9 @@ import { useState } from "react";
 import { CheckIcon, ChevronDownIcon } from "@/components/icons";
 import { ProgressBar } from "@/components/ProgressBar";
 import type { IntakeField, IntakeSection } from "@/lib/onboarding/types";
+import type { UploadedFile } from "@/lib/onboarding/uploads";
+import { MultiSelect } from "./MultiSelect";
+import { UploadField } from "./UploadField";
 
 const inputClasses =
   "w-full rounded-md border border-border bg-surface px-3.5 text-[15px] text-fg placeholder:text-fg-faint transition-[border-color,box-shadow] focus:border-accent-bright focus:outline-none focus:ring-[3px] focus:ring-accent-bright/15";
@@ -11,11 +14,19 @@ const inputClasses =
 function Field({
   field,
   value,
+  selections,
+  files,
   onChange,
+  onSelectionsChange,
+  onFilesChange,
 }: {
   field: IntakeField;
   value: string;
+  selections: string[];
+  files: UploadedFile[];
   onChange: (value: string) => void;
+  onSelectionsChange: (selections: string[]) => void;
+  onFilesChange: (files: UploadedFile[]) => void;
 }) {
   return (
     <div>
@@ -31,6 +42,11 @@ function Field({
           </span>
         )}
       </label>
+      {field.helper && (
+        <p className="-mt-0.5 mb-1.5 text-[12px] text-fg-faint">
+          {field.helper}
+        </p>
+      )}
 
       {field.type === "text" && (
         <input
@@ -72,6 +88,18 @@ function Field({
           ))}
         </select>
       )}
+      {field.type === "multiselect" && (
+        <MultiSelect
+          id={field.id}
+          options={field.options ?? []}
+          selected={selections}
+          onChange={onSelectionsChange}
+          placeholder={field.placeholder}
+        />
+      )}
+      {field.type === "upload" && (
+        <UploadField id={field.id} files={files} onChange={onFilesChange} />
+      )}
     </div>
   );
 }
@@ -91,6 +119,8 @@ export function IntakeForm({
   className?: string;
 }) {
   const [values, setValues] = useState<Record<string, string>>({});
+  const [selections, setSelections] = useState<Record<string, string[]>>({});
+  const [files, setFiles] = useState<Record<string, UploadedFile[]>>({});
   const [saved, setSaved] = useState<Record<string, boolean>>({});
   const [expandedId, setExpandedId] = useState<string | null>(
     sections[0]?.id ?? null,
@@ -188,8 +218,16 @@ export function IntakeForm({
                       key={field.id}
                       field={field}
                       value={values[field.id] ?? ""}
+                      selections={selections[field.id] ?? []}
+                      files={files[field.id] ?? []}
                       onChange={(value) =>
                         setValues((prev) => ({ ...prev, [field.id]: value }))
+                      }
+                      onSelectionsChange={(next) =>
+                        setSelections((prev) => ({ ...prev, [field.id]: next }))
+                      }
+                      onFilesChange={(next) =>
+                        setFiles((prev) => ({ ...prev, [field.id]: next }))
                       }
                     />
                   ))}

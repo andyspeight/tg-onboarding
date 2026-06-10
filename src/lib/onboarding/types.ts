@@ -101,14 +101,25 @@ export interface PortalNotification {
   read: boolean;
 }
 
-export type IntakeFieldType = "text" | "textarea" | "select";
+export type IntakeFieldType =
+  | "text"
+  | "textarea"
+  | "select"
+  | "multiselect"
+  | "upload";
 
 export interface IntakeField {
   id: string;
   label: string;
   type: IntakeFieldType;
   placeholder?: string;
-  /** For selects. */
+  /** Short guidance shown under the label. */
+  helper?: string;
+  /**
+   * For selects and multiselects. Multiselect options come from central
+   * lists in the data layer (the supplier list lives in Airtable after the
+   * swap, where the team curates it; its admin UI is Phase 2).
+   */
   options?: string[];
   required?: boolean;
 }

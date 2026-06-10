@@ -239,6 +239,19 @@
   }
 }
 
+/* The "alive" dot on the happening-now pill. */
+@keyframes tg-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  70%,
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
 @keyframes tg-bell-ring {
   0%,
   100% {

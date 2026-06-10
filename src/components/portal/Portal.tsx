@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { OnboardingJourney, TaskStatus } from "@/lib/onboarding/types";
 import {
+  currentPhase,
   overallProgress,
   phaseProgress,
   phasesComplete,
@@ -36,6 +37,7 @@ export function Portal({ journey }: { journey: OnboardingJourney }) {
     () => workloadStats(phases, journey.asOf),
     [phases, journey.asOf],
   );
+  const active = useMemo(() => currentPhase(phases), [phases]);
 
   function cycleTask(phaseId: string, taskId: string) {
     setPhases((prev) =>
@@ -80,6 +82,8 @@ export function Portal({ journey }: { journey: OnboardingJourney }) {
         overall={overall}
         phasesComplete={completeCount}
         phaseCount={phases.length}
+        activePhaseTitle={active?.title}
+        activePhaseHref={active ? `#phase-${active.number}` : undefined}
       />
 
       <QuickStats stats={stats} />

@@ -2,6 +2,44 @@ import type { IntakeSection, OnboardingJourney } from "./types";
 import { shiftDays, ukToday } from "./dates";
 
 /**
+ * Central supplier lists. These feed the multi-selects in the Suppliers
+ * section. After the Airtable swap they live in a Suppliers table the team
+ * curates directly in Airtable; the admin UI for managing them is Phase 2.
+ */
+const PACKAGE_SUPPLIERS = [
+  "Jet2holidays",
+  "TUI",
+  "easyJet holidays",
+  "Hays Faraway",
+  "Gold Medal",
+  "Olympic Holidays",
+  "Classic Collection",
+  "If Only",
+  "Cyplon Holidays",
+  "Funway Holidays",
+];
+
+const ACCOMMODATION_SUPPLIERS = [
+  "Booking.com",
+  "Expedia TAAP",
+  "Bedsonline",
+  "Hotelbeds",
+  "Stuba",
+  "RoomRes",
+  "Sunhotels",
+  "WebBeds",
+];
+
+const FLIGHT_SUPPLIERS = [
+  "Travelport",
+  "Amadeus",
+  "Sabre",
+  "Aviate",
+  "Lime Management",
+  "Travel 2",
+];
+
+/**
  * The smart intake form, adapted from the approved prototype. The Suppliers
  * section is tier-conditional: Spark clients don't manage their own supplier
  * feeds, so they never see it (filtering happens in `data.ts`).
@@ -52,6 +90,12 @@ const INTAKE_SECTIONS: IntakeSection[] = [
         ],
         required: true,
       },
+      {
+        id: "consortium",
+        label: "Consortium name (if you're part of one)",
+        type: "text",
+        placeholder: "e.g. The Travel Network Group, Advantage, Hays IG...",
+      },
     ],
   },
   {
@@ -59,6 +103,13 @@ const INTAKE_SECTIONS: IntakeSection[] = [
     title: "Branding & design",
     description: "Help us match your site to your brand.",
     fields: [
+      {
+        id: "brand-logos",
+        label: "Upload your logo(s)",
+        type: "upload",
+        helper:
+          "PNG or SVG works well. Vector files (AI or EPS) are even better if you have them.",
+      },
       {
         id: "brand-colour-primary",
         label: "Your primary brand colour",
@@ -98,20 +149,29 @@ const INTAKE_SECTIONS: IntakeSection[] = [
       {
         id: "suppliers-package",
         label: "Package holiday suppliers",
-        type: "textarea",
-        placeholder: "e.g. Jet2holidays, TUI, easyJet holidays...",
+        type: "multiselect",
+        placeholder: "Select suppliers...",
+        options: PACKAGE_SUPPLIERS,
       },
       {
         id: "suppliers-accommodation",
         label: "Accommodation suppliers",
-        type: "textarea",
-        placeholder: "e.g. Booking.com, Expedia TAAP, Bedsonline...",
+        type: "multiselect",
+        placeholder: "Select suppliers...",
+        options: ACCOMMODATION_SUPPLIERS,
       },
       {
         id: "suppliers-flights",
         label: "Flight-only suppliers",
+        type: "multiselect",
+        placeholder: "Select suppliers...",
+        options: FLIGHT_SUPPLIERS,
+      },
+      {
+        id: "suppliers-other",
+        label: "Anyone we've missed?",
         type: "textarea",
-        placeholder: "e.g. Travelport, Amadeus...",
+        placeholder: "List any other suppliers you work with...",
       },
       {
         id: "suppliers-cruise",

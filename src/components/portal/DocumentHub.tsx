@@ -4,6 +4,11 @@ import { useRef, useState } from "react";
 import { UploadIcon } from "@/components/icons";
 import type { ClientDocument, DocumentStatus } from "@/lib/onboarding/types";
 import { formatShortDate } from "@/lib/onboarding/dates";
+import {
+  DOCUMENT_EXTENSIONS,
+  screenFiles,
+  type UploadedFile,
+} from "@/lib/onboarding/uploads";
 
 const STATUS_META: Record<
   DocumentStatus | "received",
@@ -23,34 +28,6 @@ const TYPE_CLS: Record<string, string> = {
   JPG: "bg-accent-soft text-accent",
   JPEG: "bg-accent-soft text-accent",
 };
-
-const ALLOWED_EXTENSIONS = [
-  "png",
-  "jpg",
-  "jpeg",
-  "webp",
-  "gif",
-  "svg",
-  "pdf",
-  "doc",
-  "docx",
-  "xls",
-  "xlsx",
-  "zip",
-];
-const MAX_SIZE_MB = 20;
-
-interface UploadEntry {
-  id: string;
-  name: string;
-  fileType: string;
-  sizeLabel: string;
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 function DocRow({
   name,
@@ -102,7 +79,7 @@ export function DocumentHub({
   className?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [uploads, setUploads] = useState<UploadEntry[]>([]);
+  const [uploads, setUploads] = useState<UploadedFile[]>([]);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -110,25 +87,7 @@ export function DocumentHub({
 
   function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
-    const accepted: UploadEntry[] = [];
-    const rejected: string[] = [];
-
-    for (const file of Array.from(files)) {
-      const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
-      if (!ALLOWED_EXTENSIONS.includes(extension)) {
-        rejected.push(`${file.name} (file type not supported)`);
-      } else if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-        rejected.push(`${file.name} (over ${MAX_SIZE_MB} MB)`);
-      } else {
-        accepted.push({
-          id: `upload-${Date.now()}-${accepted.length}`,
-          name: file.name,
-          fileType: extension.toUpperCase(),
-          sizeLabel: formatSize(file.size),
-        });
-      }
-    }
-
+    const { accepted, rejected } = screenFiles(files, DOCUMENT_EXTENSIONS);
     if (accepted.length > 0) setUploads((prev) => [...prev, ...accepted]);
     setError(
       rejected.length > 0 ? `We couldn’t add: ${rejected.join(", ")}` : null,
@@ -170,7 +129,7 @@ export function DocumentHub({
         ref={inputRef}
         type="file"
         multiple
-        accept={ALLOWED_EXTENSIONS.map((extension) => `.${extension}`).join(",")}
+        accept={DOCUMENT_EXTENSIONS.map((extension) => `.${extension}`).join(",")}
         onChange={(event) => {
           handleFiles(event.target.files);
           event.target.value = "";
