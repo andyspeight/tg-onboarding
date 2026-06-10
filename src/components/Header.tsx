@@ -16,9 +16,11 @@ import { ThemeToggle } from "./ThemeToggle";
 export function Header({
   client,
   notifications,
+  unreadMessages = 0,
 }: {
   client: ClientProfile;
   notifications: PortalNotification[];
+  unreadMessages?: number;
 }) {
   const pathname = usePathname();
   const liveItems = NAV_ITEMS.filter(
@@ -55,13 +57,21 @@ export function Header({
               key={label}
               href={href}
               aria-current={active ? "page" : undefined}
-              className={`inline-flex h-8 shrink-0 items-center rounded-full px-3.5 text-[13px] font-medium transition-colors ${
+              className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-medium transition-colors ${
                 active
                   ? "bg-accent-soft text-accent"
                   : "text-fg-muted hover:text-fg"
               }`}
             >
               {label}
+              {href === "/messages" && unreadMessages > 0 && (
+                <span
+                  aria-label={`${unreadMessages} unread`}
+                  className="flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[9px] font-bold text-accent-contrast"
+                >
+                  {unreadMessages}
+                </span>
+              )}
             </Link>
           );
         })}

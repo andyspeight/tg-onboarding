@@ -18,10 +18,18 @@ export default async function PortalLayout({
 
   return (
     <div className="flex min-h-dvh">
-      <Sidebar client={journey.client} notifications={journey.notifications} />
+      <Sidebar
+        client={journey.client}
+        notifications={journey.notifications}
+        unreadMessages={journey.unreadMessages}
+      />
 
       <div className="min-w-0 flex-1">
-        <Header client={journey.client} notifications={journey.notifications} />
+        <Header
+          client={journey.client}
+          notifications={journey.notifications}
+          unreadMessages={journey.unreadMessages}
+        />
 
         <main className="mx-auto w-full max-w-5xl px-6 py-8 sm:px-10 sm:py-10">
           {children}

@@ -265,6 +265,15 @@ export function makeMockJourney(): OnboardingJourney {
     intakeResponses: {},
     trainingCompleted: [],
     confidence: null,
+    messages: [
+      {
+        id: "mock-msg-1",
+        from: "team",
+        body: "Hi Sarah — this is your direct line to us. Ask anything here, big or small, and one of the team will get back to you.",
+        whenLabel: "2h ago",
+      },
+    ],
+    unreadMessages: 0,
     suppliers: [
       ...PACKAGE_SUPPLIERS.map((name, index) => ({
         id: `mock-pkg-${index}`,

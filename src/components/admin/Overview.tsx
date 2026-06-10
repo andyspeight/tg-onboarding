@@ -170,8 +170,16 @@ export function Overview({ clients }: { clients: AdminClientSummary[] }) {
               >
                 <HealthDot health={client.health} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-semibold text-fg">
+                  <p className="flex items-center gap-2 truncate text-[13px] font-semibold text-fg">
                     {client.company}
+                    {client.unreadMessages > 0 && (
+                      <span
+                        title={`${client.unreadMessages} unread message${client.unreadMessages === 1 ? "" : "s"}`}
+                        className="shrink-0 rounded-full bg-accent px-1.5 py-px text-[9px] font-bold text-accent-contrast"
+                      >
+                        {client.unreadMessages} new
+                      </span>
+                    )}
                   </p>
                   <p className="text-[11px] text-fg-muted">
                     {client.contactName}

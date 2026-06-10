@@ -165,6 +165,15 @@ export interface ClientDocument {
   status: DocumentStatus;
 }
 
+/** One message in the client ↔ team thread. */
+export interface PortalMessage {
+  id: string;
+  from: "team" | "client";
+  body: string;
+  /** Pre-computed relative label ("2h ago"), like notifications. */
+  whenLabel: string;
+}
+
 export interface OnboardingJourney {
   /** Where this journey came from — drives the footer note. */
   source: "airtable" | "mock";
@@ -181,6 +190,10 @@ export interface OnboardingJourney {
   documents: ClientDocument[];
   /** Active suppliers, rich cards for the intake picker and directory. */
   suppliers: PortalSupplier[];
+  /** The client ↔ team thread, oldest first. */
+  messages: PortalMessage[];
+  /** Team messages the client hasn't seen — drives the nav badge. */
+  unreadMessages: number;
   /** Saved intake answers, keyed by field id (multi-selects comma-joined). */
   intakeResponses: Record<string, string>;
   /** Training items this client has marked done. */

@@ -29,7 +29,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/documents", label: "Documents", Icon: FolderIcon },
   { href: "/training", label: "Training", Icon: BookIcon },
   { href: "/suppliers", label: "Suppliers", Icon: TagIcon },
-  { href: null, label: "Messages", Icon: ChatIcon },
+  { href: "/messages", label: "Messages", Icon: ChatIcon },
 ];
 
 export function isActivePath(pathname: string, href: string) {
@@ -45,9 +45,11 @@ export function isActivePath(pathname: string, href: string) {
 export function Sidebar({
   client,
   notifications,
+  unreadMessages = 0,
 }: {
   client: ClientProfile;
   notifications: PortalNotification[];
+  unreadMessages?: number;
 }) {
   const pathname = usePathname();
 
@@ -122,6 +124,14 @@ export function Sidebar({
                 className={`h-4 w-4 shrink-0 ${active ? "" : "opacity-70"}`}
               />
               {label}
+              {href === "/messages" && unreadMessages > 0 && (
+                <span
+                  aria-label={`${unreadMessages} unread`}
+                  className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-white px-1 text-[10px] font-bold text-brand"
+                >
+                  {unreadMessages}
+                </span>
+              )}
             </Link>
           );
         })}

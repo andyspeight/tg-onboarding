@@ -1,4 +1,5 @@
 import { ProgressBar } from "@/components/ProgressBar";
+import { ClientMessages } from "@/components/admin/ClientMessages";
 import type { AdminClientDetail } from "@/lib/onboarding/health";
 import { formatShortDate } from "@/lib/onboarding/dates";
 
@@ -71,6 +72,22 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
             </p>
           </div>
         </div>
+      </section>
+
+      <section>
+        <h2 className="mb-2.5 text-[13px] font-bold text-fg">
+          Messages
+          {summary.unreadMessages > 0 && (
+            <span className="ml-2 rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-accent-contrast">
+              {summary.unreadMessages} new
+            </span>
+          )}
+        </h2>
+        <ClientMessages
+          clientId={summary.id}
+          messages={detail.messages}
+          contactName={summary.contactName}
+        />
       </section>
 
       <section>

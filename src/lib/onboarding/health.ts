@@ -84,6 +84,8 @@ export interface AdminClientSummary {
   daysQuiet: number;
   overdueCount: number;
   intakePct: number;
+  /** Client messages the team hasn't read yet. */
+  unreadMessages: number;
   health: HealthLevel;
   reasons: string[];
 }
@@ -155,6 +157,15 @@ export interface AdminDetailTraining {
   done: boolean;
 }
 
+export interface AdminDetailMessage {
+  id: string;
+  from: "team" | "client";
+  body: string;
+  whenLabel: string;
+  /** True for client messages the team hadn't read when the page loaded. */
+  unread: boolean;
+}
+
 export interface AdminClientDetail {
   summary: AdminClientSummary;
   contactEmail?: string;
@@ -165,6 +176,8 @@ export interface AdminClientDetail {
   documents: AdminDetailDocument[];
   intake: AdminDetailIntakeSection[];
   training: AdminDetailTraining[];
+  /** Thread oldest-first, capped to the recent window. */
+  messages: AdminDetailMessage[];
 }
 
 export type SupplierCategory =

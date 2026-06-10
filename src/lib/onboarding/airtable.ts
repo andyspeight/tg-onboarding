@@ -6,6 +6,7 @@ import type {
   NotificationKind,
   OnboardingJourney,
   OnboardingTask,
+  PortalMessage,
   PortalNotification,
   TaskAudience,
   TaskOwner,
@@ -61,6 +62,17 @@ const TABLES = {
   confidenceRatings: "tbl1mfOO84zYhnpYR",
   engagementSignals: "tblUJTgxwcjzGvaRd",
   automationLog: "tbl6JmGMnuRvHbYuc",
+  messages: "tblClvD9i8QPZJwVS",
+};
+
+const MSG_F = {
+  preview: "fldrHdHQd9ojanUBZ",
+  client: "fldRxcp88EqjMHLD8",
+  sender: "fld2XdCzogwngsNad",
+  body: "fldmRrouQj3T5wu0o",
+  sentAt: "fldQ7V2ZgXtdvp0qH",
+  readByClient: "fldkXsna3wh6oY8AH",
+  readByTeam: "fldM1xwnYiYce8ql2",
 };
 
 const AUTOMATION_F = {
@@ -472,11 +484,12 @@ export async function fetchJourneyFromAirtable(): Promise<OnboardingJourney | nu
         listAll(config, TABLES.notifications),
         listAll(config, TABLES.suppliers),
       ]);
-    const [completionRecords, responseRecords, confidenceRecords] =
+    const [completionRecords, responseRecords, confidenceRecords, messageRecords] =
       await Promise.all([
         listAll(config, TABLES.trainingCompletions),
         listAll(config, TABLES.intakeResponses),
         listAll(config, TABLES.confidenceRatings),
+        listAll(config, TABLES.messages),
       ]);
 
     const clientRecord = oldestFirst(clients)[0];
@@ -600,6 +613,24 @@ export async function fetchJourneyFromAirtable(): Promise<OnboardingJourney | nu
         Date.parse(str(a, CONFIDENCE_F.ratedAt)),
     )[0];
 
+    const myMessages = messageRecords
+      .filter((record) => links(record, MSG_F.client).includes(clientRecord.id))
+      .sort(
+        (a, b) =>
+          Date.parse(str(a, MSG_F.sentAt)) - Date.parse(str(b, MSG_F.sentAt)),
+      );
+    const messages: PortalMessage[] = myMessages.map((record) => ({
+      id: record.id,
+      from: str(record, MSG_F.sender) === "Client" ? "client" : "team",
+      body: str(record, MSG_F.body),
+      whenLabel: relativeLabel(str(record, MSG_F.sentAt), nowMs),
+    }));
+    const unreadMessages = myMessages.filter(
+      (record) =>
+        str(record, MSG_F.sender) === "Team" &&
+        !bool(record, MSG_F.readByClient),
+    ).length;
+
     return {
       source: "airtable",
       asOf: ukToday(),
@@ -626,6 +657,8 @@ export async function fetchJourneyFromAirtable(): Promise<OnboardingJourney | nu
             a.category.localeCompare(b.category) ||
             a.name.localeCompare(b.name),
         ),
+      messages,
+      unreadMessages,
       intakeResponses,
       trainingCompleted,
       confidence: latestConfidence
@@ -802,12 +835,26 @@ export async function setTrainingCompletion(
   return true;
 }
 
+/** Client → team messages the team hasn't read yet. */
+function countUnreadFromClient(
+  messageRecords: AirtableRecord[],
+  clientId: string,
+): number {
+  return messageRecords.filter(
+    (record) =>
+      links(record, MSG_F.client).includes(clientId) &&
+      str(record, MSG_F.sender) === "Client" &&
+      !bool(record, MSG_F.readByTeam),
+  ).length;
+}
+
 /** One client's derived health summary — shared by snapshot and detail. */
 function summariseClient(
   clientRecord: AirtableRecord,
   allTasks: AirtableRecord[],
   phasesSorted: AirtableRecord[],
   responseRecords: AirtableRecord[],
+  messageRecords: AirtableRecord[],
   today: string,
   nowMs: number,
 ): AdminClientSummary {
@@ -900,6 +947,7 @@ function summariseClient(
     daysQuiet,
     overdueCount,
     intakePct,
+    unreadMessages: countUnreadFromClient(messageRecords, clientId),
     health,
     reasons,
   };
@@ -915,12 +963,13 @@ export async function fetchAdminSnapshot(): Promise<AdminSnapshot | null> {
   if (!config) return null;
 
   try {
-    const [clients, phaseRecords, taskRecords, responseRecords] =
+    const [clients, phaseRecords, taskRecords, responseRecords, messageRecords] =
       await Promise.all([
         listAll(config, TABLES.clients),
         listAll(config, TABLES.phases),
         listAll(config, TABLES.tasks),
         listAll(config, TABLES.intakeResponses),
+        listAll(config, TABLES.messages),
       ]);
 
     const today = ukToday();
@@ -930,7 +979,15 @@ export async function fetchAdminSnapshot(): Promise<AdminSnapshot | null> {
     );
 
     const summaries: AdminClientSummary[] = clients.map((clientRecord) =>
-      summariseClient(clientRecord, taskRecords, phasesSorted, responseRecords, today, nowMs),
+      summariseClient(
+        clientRecord,
+        taskRecords,
+        phasesSorted,
+        responseRecords,
+        messageRecords,
+        today,
+        nowMs,
+      ),
     );
 
     const healthRank = { red: 0, amber: 1, green: 2 };
@@ -1064,13 +1121,19 @@ export async function fetchAdminClientDetail(
         listAll(config, TABLES.intakeResponses),
         listAll(config, TABLES.engagementSignals),
       ]);
-    const [confidenceRecords, documentRecords, trainingRecords, completionRecords] =
-      await Promise.all([
-        listAll(config, TABLES.confidenceRatings),
-        listAll(config, TABLES.documents),
-        listAll(config, TABLES.training),
-        listAll(config, TABLES.trainingCompletions),
-      ]);
+    const [
+      confidenceRecords,
+      documentRecords,
+      trainingRecords,
+      completionRecords,
+      messageRecords,
+    ] = await Promise.all([
+      listAll(config, TABLES.confidenceRatings),
+      listAll(config, TABLES.documents),
+      listAll(config, TABLES.training),
+      listAll(config, TABLES.trainingCompletions),
+      listAll(config, TABLES.messages),
+    ]);
 
     const today = ukToday();
     const nowMs = Date.now();
@@ -1083,6 +1146,7 @@ export async function fetchAdminClientDetail(
       taskRecords,
       phasesSorted,
       responseRecords,
+      messageRecords,
       today,
       nowMs,
     );
@@ -1184,6 +1248,25 @@ export async function fetchAdminClientDetail(
         done: completedTrainingIds.has(record.id),
       }));
 
+    const messages = messageRecords
+      .filter((record) => links(record, MSG_F.client).includes(clientId))
+      .sort(
+        (a, b) =>
+          Date.parse(str(a, MSG_F.sentAt)) - Date.parse(str(b, MSG_F.sentAt)),
+      )
+      .slice(-50)
+      .map((record) => ({
+        id: record.id,
+        from: (str(record, MSG_F.sender) === "Client" ? "client" : "team") as
+          | "client"
+          | "team",
+        body: str(record, MSG_F.body),
+        whenLabel: relativeLabel(str(record, MSG_F.sentAt), nowMs),
+        unread:
+          str(record, MSG_F.sender) === "Client" &&
+          !bool(record, MSG_F.readByTeam),
+      }));
+
     return {
       summary,
       contactEmail: str(clientRecord, CLIENT_F.email) || undefined,
@@ -1194,6 +1277,7 @@ export async function fetchAdminClientDetail(
       documents,
       intake,
       training,
+      messages,
     };
   } catch (error) {
     console.error("[onboarding/airtable] client detail failed:", error);
@@ -1309,6 +1393,84 @@ export async function deleteSupplier(
   if (!record) return false;
   await deleteRecord(config, TABLES.suppliers, supplierId);
   return true;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Messages — the client ↔ team thread.                                     */
+/* ------------------------------------------------------------------------ */
+
+/** Routes use this to reject made-up client ids before writing. */
+export async function clientExists(
+  config: AirtableConfig,
+  clientId: string,
+): Promise<boolean> {
+  return (await getRecord(config, TABLES.clients, clientId)) !== null;
+}
+
+/** Append a message; the sender's own read flag starts true. */
+export async function sendMessage(
+  config: AirtableConfig,
+  clientId: string,
+  from: "team" | "client",
+  body: string,
+): Promise<void> {
+  const sender = from === "team" ? "Team" : "Client";
+  await createRecords(config, TABLES.messages, [
+    {
+      [MSG_F.preview]: body.replace(/\s+/g, " ").slice(0, 60),
+      [MSG_F.client]: [clientId],
+      [MSG_F.sender]: sender,
+      [MSG_F.body]: body,
+      [MSG_F.sentAt]: new Date().toISOString(),
+      [from === "team" ? MSG_F.readByTeam : MSG_F.readByClient]: true,
+    },
+  ]);
+
+  // A team reply also lands as a portal notification, so the bell and the
+  // Messages badge both light up.
+  if (from === "team") {
+    await createRecords(config, TABLES.notifications, [
+      {
+        [NOTIF_F.text]: "New message from your Travelgenix team.",
+        [NOTIF_F.client]: [clientId],
+        [NOTIF_F.kind]: "message",
+        [NOTIF_F.created]: new Date().toISOString(),
+      },
+    ]).catch((error) => {
+      // The message is what matters; a missed nudge isn't worth a failure.
+      console.error("[onboarding/airtable] message notification failed:", error);
+    });
+  }
+}
+
+/** Mark everything the other side sent as read by `reader`. */
+export async function markMessagesRead(
+  config: AirtableConfig,
+  clientId: string,
+  reader: "team" | "client",
+): Promise<void> {
+  const otherSender = reader === "team" ? "Client" : "Team";
+  const readFlag = reader === "team" ? MSG_F.readByTeam : MSG_F.readByClient;
+
+  const records = await listAll(config, TABLES.messages);
+  const unread = records.filter(
+    (record) =>
+      links(record, MSG_F.client).includes(clientId) &&
+      str(record, MSG_F.sender) === otherSender &&
+      !bool(record, readFlag),
+  );
+
+  // Airtable caps batch updates at 10 records per request.
+  for (let start = 0; start < unread.length; start += 10) {
+    await updateRecords(
+      config,
+      TABLES.messages,
+      unread.slice(start, start + 10).map((record) => ({
+        id: record.id,
+        fields: { [readFlag]: true },
+      })),
+    );
+  }
 }
 
 export interface NewClientInput {
@@ -1537,10 +1699,13 @@ export async function runAutomation(): Promise<AutomationRunResult | null> {
     const clientId = clientRecord.id;
     const email = str(clientRecord, CLIENT_F.email);
     const firstName = str(clientRecord, CLIENT_F.contactName).split(" ")[0] || "there";
+    // Empty responses/messages: the engine's rules don't use intake or
+    // unread counts, so skipping those reads keeps the cron light.
     const summary = summariseClient(
       clientRecord,
       taskRecords,
       phasesSorted,
+      [],
       [],
       today,
       nowMs,
