@@ -7,6 +7,7 @@ const NAV = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/team-tasks", label: "Team tasks" },
   { href: "/admin/suppliers", label: "Suppliers" },
+  { href: "/admin/knowledge", label: "Knowledge" },
 ];
 
 /** Top strip of the internal dashboard, per the prototype's admin header. */

@@ -63,6 +63,7 @@ const TABLES = {
   engagementSignals: "tblUJTgxwcjzGvaRd",
   automationLog: "tbl6JmGMnuRvHbYuc",
   messages: "tblClvD9i8QPZJwVS",
+  knowledgeBase: "tbl02IR9iQtRxAV28",
 };
 
 const MSG_F = {
@@ -73,7 +74,48 @@ const MSG_F = {
   sentAt: "fldQ7V2ZgXtdvp0qH",
   readByClient: "fldkXsna3wh6oY8AH",
   readByTeam: "fldM1xwnYiYce8ql2",
+  attachments: "fldCPFM65ArYJMsDB",
 };
+
+const KB_F = {
+  title: "fldZGLCJV2LXlBSpe",
+  body: "fldCExTddFzwR6ijR",
+  keywords: "fldGICA3THYD3Kahv",
+  category: "fld6rQqkyObQ9xw44",
+  active: "fld5wtLBsTHepOtWI",
+};
+
+type MessageSender = "team" | "client" | "luna";
+
+function senderOf(record: AirtableRecord): MessageSender {
+  const value = str(record, MSG_F.sender);
+  return value === "Client" ? "client" : value === "Luna" ? "luna" : "team";
+}
+
+/** Airtable attachment cells → the shape both threads render. */
+function messageAttachments(
+  record: AirtableRecord,
+): { url: string; filename: string; isImage: boolean }[] | undefined {
+  const value = record.fields[MSG_F.attachments];
+  if (!Array.isArray(value) || value.length === 0) return undefined;
+  const mapped = value.flatMap((item) => {
+    if (typeof item !== "object" || item === null) return [];
+    const { url, filename, type } = item as {
+      url?: unknown;
+      filename?: unknown;
+      type?: unknown;
+    };
+    if (typeof url !== "string" || url === "") return [];
+    return [
+      {
+        url,
+        filename: typeof filename === "string" ? filename : "Attachment",
+        isImage: typeof type === "string" && type.startsWith("image/"),
+      },
+    ];
+  });
+  return mapped.length > 0 ? mapped : undefined;
+}
 
 const AUTOMATION_F = {
   summary: "fldfAexVOdJtehqT6",
@@ -621,9 +663,10 @@ export async function fetchJourneyFromAirtable(): Promise<OnboardingJourney | nu
       );
     const messages: PortalMessage[] = myMessages.map((record) => ({
       id: record.id,
-      from: str(record, MSG_F.sender) === "Client" ? "client" : "team",
+      from: senderOf(record),
       body: str(record, MSG_F.body),
       whenLabel: relativeLabel(str(record, MSG_F.sentAt), nowMs),
+      attachments: messageAttachments(record),
     }));
     const unreadMessages = myMessages.filter(
       (record) =>
@@ -1257,14 +1300,13 @@ export async function fetchAdminClientDetail(
       .slice(-50)
       .map((record) => ({
         id: record.id,
-        from: (str(record, MSG_F.sender) === "Client" ? "client" : "team") as
-          | "client"
-          | "team",
+        from: senderOf(record),
         body: str(record, MSG_F.body),
         whenLabel: relativeLabel(str(record, MSG_F.sentAt), nowMs),
         unread:
           str(record, MSG_F.sender) === "Client" &&
           !bool(record, MSG_F.readByTeam),
+        attachments: messageAttachments(record),
       }));
 
     return {
@@ -1407,27 +1449,80 @@ export async function clientExists(
   return (await getRecord(config, TABLES.clients, clientId)) !== null;
 }
 
-/** Append a message; the sender's own read flag starts true. */
+export interface MessageFile {
+  name: string;
+  contentType: string;
+  base64: string;
+}
+
+const SENDER_LABEL: Record<MessageSender, string> = {
+  team: "Team",
+  client: "Client",
+  luna: "Luna",
+};
+
+/**
+ * Append a message; the sender's own read flag starts true. Luna replies
+ * count as read on both sides — the client is mid-conversation when they
+ * arrive, and the team's unread badge tracks only client messages.
+ */
 export async function sendMessage(
   config: AirtableConfig,
   clientId: string,
-  from: "team" | "client",
+  from: MessageSender,
   body: string,
+  file?: MessageFile,
 ): Promise<void> {
-  const sender = from === "team" ? "Team" : "Client";
-  await createRecords(config, TABLES.messages, [
-    {
-      [MSG_F.preview]: body.replace(/\s+/g, " ").slice(0, 60),
-      [MSG_F.client]: [clientId],
-      [MSG_F.sender]: sender,
-      [MSG_F.body]: body,
-      [MSG_F.sentAt]: new Date().toISOString(),
-      [from === "team" ? MSG_F.readByTeam : MSG_F.readByClient]: true,
-    },
-  ]);
+  const preview =
+    body.replace(/\s+/g, " ").slice(0, 60) || (file ? `📎 ${file.name}` : "");
+  const fields: Record<string, unknown> = {
+    [MSG_F.preview]: preview,
+    [MSG_F.client]: [clientId],
+    [MSG_F.sender]: SENDER_LABEL[from],
+    [MSG_F.body]: body,
+    [MSG_F.sentAt]: new Date().toISOString(),
+  };
+  if (from !== "client") fields[MSG_F.readByTeam] = true;
+  if (from !== "team") fields[MSG_F.readByClient] = from === "luna";
 
-  // A team reply also lands as a portal notification, so the bell and the
-  // Messages badge both light up.
+  // Created directly (not via createRecords) because the attachment upload
+  // needs the new record's id.
+  const response = await airtableFetch(config, TABLES.messages, {
+    method: "POST",
+    body: JSON.stringify({ records: [{ fields }], typecast: true }),
+  });
+  if (!response.ok) {
+    throw new Error(`Airtable create message responded ${response.status}`);
+  }
+  const created = (await response.json()) as { records: { id: string }[] };
+  const recordId = created.records[0]?.id;
+
+  if (file && recordId) {
+    const upload = await fetch(
+      `${CONTENT_URL}/${config.baseId}/${recordId}/${MSG_F.attachments}/uploadAttachment`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${config.pat}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contentType: file.contentType,
+          file: file.base64,
+          filename: file.name,
+        }),
+      },
+    );
+    if (!upload.ok) {
+      // The text half of the message stands; flag the lost file server-side.
+      console.error(
+        `[onboarding/airtable] message attachment upload responded ${upload.status}`,
+      );
+    }
+  }
+
+  // A human team reply also lands as a portal notification, so the bell and
+  // the Messages badge both light up. Luna answers in-page — no nudge needed.
   if (from === "team") {
     await createRecords(config, TABLES.notifications, [
       {
@@ -1441,6 +1536,15 @@ export async function sendMessage(
       console.error("[onboarding/airtable] message notification failed:", error);
     });
   }
+}
+
+/** Client messages the team hasn't read — drives the "first new" email. */
+export async function countTeamUnread(
+  config: AirtableConfig,
+  clientId: string,
+): Promise<number> {
+  const records = await listAll(config, TABLES.messages);
+  return countUnreadFromClient(records, clientId);
 }
 
 /** Mark everything the other side sent as read by `reader`. */
@@ -1471,6 +1575,117 @@ export async function markMessagesRead(
       })),
     );
   }
+}
+
+/* ------------------------------------------------------------------------ */
+/* Knowledge base — the articles Luna answers from.                         */
+/* ------------------------------------------------------------------------ */
+
+export interface AdminKbArticle {
+  id: string;
+  title: string;
+  body: string;
+  keywords: string;
+  category: string;
+  active: boolean;
+}
+
+function kbArticle(record: AirtableRecord): AdminKbArticle {
+  return {
+    id: record.id,
+    title: str(record, KB_F.title),
+    body: str(record, KB_F.body),
+    keywords: str(record, KB_F.keywords),
+    category: str(record, KB_F.category) || "General",
+    active: bool(record, KB_F.active),
+  };
+}
+
+/** Active articles only — what Luna is allowed to answer from. */
+export async function fetchActiveKnowledge(
+  config: AirtableConfig,
+): Promise<AdminKbArticle[]> {
+  const records = await listAll(config, TABLES.knowledgeBase);
+  return records.map(kbArticle).filter((article) => article.active);
+}
+
+/** Everything, for the admin curation screen. Null when not configured. */
+export async function fetchAdminKnowledge(): Promise<AdminKbArticle[] | null> {
+  const config = airtableConfig();
+  if (!config) return null;
+  try {
+    const records = await listAll(config, TABLES.knowledgeBase);
+    return records
+      .map(kbArticle)
+      .sort(
+        (a, b) =>
+          a.category.localeCompare(b.category) || a.title.localeCompare(b.title),
+      );
+  } catch (error) {
+    console.error("[onboarding/airtable] knowledge read failed:", error);
+    return null;
+  }
+}
+
+export interface KbInput {
+  title: string;
+  body: string;
+  keywords: string;
+  category: string;
+}
+
+function kbFields(input: KbInput): Record<string, unknown> {
+  return {
+    [KB_F.title]: input.title,
+    [KB_F.body]: input.body,
+    [KB_F.keywords]: input.keywords,
+    [KB_F.category]: input.category,
+  };
+}
+
+/** New articles go live immediately — Luna reads them on her next answer. */
+export async function createKbArticle(
+  config: AirtableConfig,
+  input: KbInput,
+): Promise<void> {
+  await createRecords(config, TABLES.knowledgeBase, [
+    { ...kbFields(input), [KB_F.active]: true },
+  ]);
+}
+
+export async function updateKbArticle(
+  config: AirtableConfig,
+  articleId: string,
+  input: KbInput,
+): Promise<boolean> {
+  const record = await getRecord(config, TABLES.knowledgeBase, articleId);
+  if (!record) return false;
+  await updateRecord(config, TABLES.knowledgeBase, articleId, kbFields(input));
+  return true;
+}
+
+/** Pause an article without losing it — Luna skips inactive ones. */
+export async function setKbActive(
+  config: AirtableConfig,
+  articleId: string,
+  active: boolean,
+): Promise<boolean> {
+  const record = await getRecord(config, TABLES.knowledgeBase, articleId);
+  if (!record) return false;
+  await updateRecord(config, TABLES.knowledgeBase, articleId, {
+    [KB_F.active]: active,
+  });
+  return true;
+}
+
+export async function deleteKbArticle(
+  config: AirtableConfig,
+  articleId: string,
+): Promise<boolean> {
+  const record = await getRecord(config, TABLES.knowledgeBase, articleId);
+  if (!record) return false;
+  await deleteRecord(config, TABLES.knowledgeBase, articleId);
+  return true;
 }
 
 export interface NewClientInput {

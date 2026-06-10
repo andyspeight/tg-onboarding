@@ -113,3 +113,43 @@ The Travelgenix onboarding tool`;
   );
   return { subject, text, html };
 }
+
+/** Client-typed text goes into HTML email — escape it at the boundary. */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+export function newMessageEmail(
+  company: string,
+  contactName: string,
+  rawPreview: string,
+  lunaAnswered: boolean,
+  clientUrl: string,
+): Template {
+  const preview = escapeHtml(rawPreview);
+  const subject = `New message from ${company}`;
+  const lunaLine = lunaAnswered
+    ? "Luna answered straight away from the knowledge base; worth a quick check that it landed right."
+    : "Nothing has gone back to them yet.";
+  const text = `${contactName} at ${company} just wrote in:
+
+"${rawPreview}"
+
+${lunaLine}
+
+Reply from their file: ${clientUrl}
+
+The Travelgenix onboarding tool`;
+  const html = shell(
+    `<p style="margin:0 0 14px;font-size:16px;font-weight:700;">New message from ${company}</p>
+<p style="margin:0 0 14px;font-size:14px;line-height:1.6;">${contactName} just wrote in:</p>
+<p style="margin:0 0 14px;padding:12px 16px;background:#f7f8fa;border-radius:8px;font-size:14px;line-height:1.6;font-style:italic;">"${preview}"</p>
+<p style="margin:0 0 20px;font-size:14px;line-height:1.6;">${lunaLine}</p>
+<p style="margin:0;">${button(clientUrl, "Open the thread")}</p>`,
+  );
+  return { subject, text, html };
+}

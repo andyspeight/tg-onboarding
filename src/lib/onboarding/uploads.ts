@@ -33,6 +33,9 @@ export const DOCUMENT_EXTENSIONS = [
   "zip",
 ];
 
+/** Files clients and staff can attach to a thread message. */
+export const MESSAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif", "pdf"];
+
 /** Logo / brand asset uploads — images and the vector formats designers use. */
 export const LOGO_EXTENSIONS = [
   "png",
@@ -91,6 +94,21 @@ export function screenFiles(
   }
 
   return { accepted, rejected };
+}
+
+/** Browser-side: a File as bare base64, or null when reading fails. */
+export async function fileToBase64(file: File): Promise<string | null> {
+  try {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+    return dataUrl.split(",")[1] || null;
+  } catch {
+    return null;
+  }
 }
 
 /** Browser-side: send one screened file to /api/upload. True on success. */

@@ -56,6 +56,10 @@ export function Overview({ clients }: { clients: AdminClientSummary[] }) {
     (sum, client) => sum + client.overdueCount,
     0,
   );
+  const unreadTotal = clients.reduce(
+    (sum, client) => sum + client.unreadMessages,
+    0,
+  );
 
   const stats = [
     { label: "Active onboardings", value: String(clients.length), cls: "text-accent" },
@@ -70,6 +74,11 @@ export function Overview({ clients }: { clients: AdminClientSummary[] }) {
       value: String(overdueTotal),
       cls: overdueTotal > 0 ? "text-danger" : "text-fg-faint",
     },
+    {
+      label: "Unread messages",
+      value: String(unreadTotal),
+      cls: unreadTotal > 0 ? "text-accent" : "text-fg-faint",
+    },
   ];
 
   const visible =
@@ -79,7 +88,7 @@ export function Overview({ clients }: { clients: AdminClientSummary[] }) {
 
   return (
     <div className="space-y-7">
-      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {stats.map((stat, index) => (
           <div
             key={stat.label}

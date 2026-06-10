@@ -159,11 +159,12 @@ export interface AdminDetailTraining {
 
 export interface AdminDetailMessage {
   id: string;
-  from: "team" | "client";
+  from: "team" | "client" | "luna";
   body: string;
   whenLabel: string;
   /** True for client messages the team hadn't read when the page loaded. */
   unread: boolean;
+  attachments?: { url: string; filename: string; isImage: boolean }[];
 }
 
 export interface AdminClientDetail {

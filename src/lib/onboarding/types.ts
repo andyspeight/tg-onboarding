@@ -165,13 +165,22 @@ export interface ClientDocument {
   status: DocumentStatus;
 }
 
+/** A file attached to a thread message. */
+export interface MessageAttachment {
+  url: string;
+  filename: string;
+  /** Images render inline; anything else renders as a file chip. */
+  isImage: boolean;
+}
+
 /** One message in the client ↔ team thread. */
 export interface PortalMessage {
   id: string;
-  from: "team" | "client";
+  from: "team" | "client" | "luna";
   body: string;
   /** Pre-computed relative label ("2h ago"), like notifications. */
   whenLabel: string;
+  attachments?: MessageAttachment[];
 }
 
 export interface OnboardingJourney {
