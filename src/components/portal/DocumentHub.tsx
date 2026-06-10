@@ -6,19 +6,20 @@ import type { ClientDocument, DocumentStatus } from "@/lib/onboarding/types";
 import { formatShortDate } from "@/lib/onboarding/dates";
 import {
   DOCUMENT_EXTENSIONS,
+  postUpload,
   screenFiles,
   type UploadedFile,
 } from "@/lib/onboarding/uploads";
-import { recordEngagement } from "@/lib/onboarding/engagement";
 
 const STATUS_META: Record<
-  DocumentStatus | "received",
+  DocumentStatus | "received" | "uploading",
   { label: string; cls: string }
 > = {
   signed: { label: "Signed", cls: "bg-success-soft text-success" },
   available: { label: "Available", cls: "bg-info-soft text-info" },
   pending: { label: "Coming soon", cls: "bg-orange-soft text-orange" },
   received: { label: "Received", cls: "bg-success-soft text-success" },
+  uploading: { label: "Uploading", cls: "bg-info-soft text-info" },
 };
 
 const TYPE_CLS: Record<string, string> = {
@@ -29,6 +30,11 @@ const TYPE_CLS: Record<string, string> = {
   JPG: "bg-accent-soft text-accent",
   JPEG: "bg-accent-soft text-accent",
 };
+
+interface UploadEntry {
+  meta: UploadedFile;
+  state: "uploading" | "done";
+}
 
 function DocRow({
   name,
@@ -68,34 +74,67 @@ function DocRow({
 
 /**
  * The document hub from the prototype: drop zone up top, then everything
- * grouped by category with type chips and status badges. Phase 1 keeps
- * uploads in memory (validated, never sent anywhere) — real storage arrives
- * with the Airtable swap, which is also when "Available" becomes a download.
+ * grouped by category with type chips and status badges. When live, uploads
+ * are screened, sent to /api/upload and stored against the Documents table;
+ * on mock data they stay in the browser.
  */
 export function DocumentHub({
   documents,
+  live,
   className = "",
 }: {
   documents: ClientDocument[];
+  live: boolean;
   className?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [uploads, setUploads] = useState<UploadedFile[]>([]);
+  const [uploads, setUploads] = useState<UploadEntry[]>([]);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const categories = [...new Set(documents.map((doc) => doc.category))];
 
-  function handleFiles(files: FileList | null) {
+  function setEntryState(id: string, state: UploadEntry["state"]) {
+    setUploads((prev) =>
+      prev.map((entry) =>
+        entry.meta.id === id ? { ...entry, state } : entry,
+      ),
+    );
+  }
+
+  async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
     const { accepted, rejected } = screenFiles(files, DOCUMENT_EXTENSIONS);
-    if (accepted.length > 0) {
-      recordEngagement("document-uploaded", `${accepted.length} files`);
-      setUploads((prev) => [...prev, ...accepted]);
-    }
     setError(
       rejected.length > 0 ? `We couldn’t add: ${rejected.join(", ")}` : null,
     );
+    if (accepted.length === 0) return;
+
+    if (!live) {
+      setUploads((prev) => [
+        ...prev,
+        ...accepted.map(({ meta }) => ({ meta, state: "done" as const })),
+      ]);
+      return;
+    }
+
+    setUploads((prev) => [
+      ...prev,
+      ...accepted.map(({ meta }) => ({ meta, state: "uploading" as const })),
+    ]);
+    const failed: string[] = [];
+    for (const { meta, file } of accepted) {
+      const ok = await postUpload("document", file);
+      if (ok) {
+        setEntryState(meta.id, "done");
+      } else {
+        setUploads((prev) => prev.filter((entry) => entry.meta.id !== meta.id));
+        failed.push(meta.name);
+      }
+    }
+    if (failed.length > 0) {
+      setError(`These didn’t upload, try again in a moment: ${failed.join(", ")}`);
+    }
   }
 
   return (
@@ -153,13 +192,13 @@ export function DocumentHub({
               Your uploads
             </h2>
             <ul className="divide-y divide-border overflow-hidden rounded-card border border-border bg-surface shadow-soft">
-              {uploads.map((upload) => (
+              {uploads.map((entry) => (
                 <DocRow
-                  key={upload.id}
-                  name={upload.name}
-                  fileType={upload.fileType}
-                  meta={`${upload.sizeLabel} · Just now`}
-                  status="received"
+                  key={entry.meta.id}
+                  name={entry.meta.name}
+                  fileType={entry.meta.fileType}
+                  meta={`${entry.meta.sizeLabel} · Just now`}
+                  status={entry.state === "uploading" ? "uploading" : "received"}
                 />
               ))}
             </ul>

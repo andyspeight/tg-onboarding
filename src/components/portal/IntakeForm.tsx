@@ -16,6 +16,7 @@ function Field({
   value,
   selections,
   files,
+  live,
   onChange,
   onSelectionsChange,
   onFilesChange,
@@ -24,6 +25,7 @@ function Field({
   value: string;
   selections: string[];
   files: UploadedFile[];
+  live: boolean;
   onChange: (value: string) => void;
   onSelectionsChange: (selections: string[]) => void;
   onFilesChange: (files: UploadedFile[]) => void;
@@ -98,7 +100,12 @@ function Field({
         />
       )}
       {field.type === "upload" && (
-        <UploadField id={field.id} files={files} onChange={onFilesChange} />
+        <UploadField
+          id={field.id}
+          files={files}
+          live={live}
+          onChange={onFilesChange}
+        />
       )}
     </div>
   );
@@ -309,6 +316,7 @@ export function IntakeForm({
                           value={values[field.id] ?? ""}
                           selections={selections[field.id] ?? []}
                           files={files[field.id] ?? []}
+                          live={live}
                           onChange={(value) =>
                             setValues((prev) => ({ ...prev, [field.id]: value }))
                           }

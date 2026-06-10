@@ -96,10 +96,12 @@ const COMPLETION_F = {
 
 const DOC_F = {
   name: "fldpSycVlG2NNZQdG",
+  client: "fldsbA11T61Yd87dL",
   category: "fld7lTn5nlUCPKCIs",
   fileType: "fldbU36Qz3ns4dW6H",
   status: "fldPclJz8ghYQhNjR",
   added: "fldUG8S5AlO7YhXLC",
+  file: "fldTGYzEH3L5bUOZ9",
 };
 
 const NOTIF_F = {
@@ -714,4 +716,69 @@ export async function setTrainingCompletion(
     }
   }
   return true;
+}
+
+const CONTENT_URL = "https://content.airtable.com/v0";
+
+/**
+ * Store a client upload: create the Documents row, then attach the file via
+ * Airtable's content endpoint. If attaching fails the row is removed again
+ * so the hub never shows a received document with no file behind it.
+ */
+export async function createClientDocumentWithFile(
+  config: AirtableConfig,
+  clientId: string,
+  file: {
+    name: string;
+    fileType: string;
+    contentType: string;
+    base64: string;
+  },
+): Promise<void> {
+  const createResponse = await airtableFetch(config, TABLES.documents, {
+    method: "POST",
+    body: JSON.stringify({
+      records: [
+        {
+          fields: {
+            [DOC_F.name]: file.name,
+            [DOC_F.client]: [clientId],
+            [DOC_F.category]: "Your uploads",
+            [DOC_F.fileType]: file.fileType,
+            [DOC_F.status]: "received",
+            [DOC_F.added]: ukToday(),
+          },
+        },
+      ],
+      typecast: true,
+    }),
+  });
+  if (!createResponse.ok) {
+    throw new Error(`Airtable create document responded ${createResponse.status}`);
+  }
+  const created = (await createResponse.json()) as {
+    records: { id: string }[];
+  };
+  const recordId = created.records[0]?.id;
+  if (!recordId) throw new Error("Airtable create document returned no id");
+
+  const uploadResponse = await fetch(
+    `${CONTENT_URL}/${config.baseId}/${recordId}/${DOC_F.file}/uploadAttachment`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.pat}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contentType: file.contentType,
+        file: file.base64,
+        filename: file.name,
+      }),
+    },
+  );
+  if (!uploadResponse.ok) {
+    await deleteRecord(config, TABLES.documents, recordId).catch(() => {});
+    throw new Error(`Airtable attachment upload responded ${uploadResponse.status}`);
+  }
 }

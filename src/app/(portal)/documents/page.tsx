@@ -18,7 +18,11 @@ export default async function DocumentsPage() {
         Everything you need in one place.
       </p>
 
-      <DocumentHub documents={journey.documents} className="mt-6" />
+      <DocumentHub
+        documents={journey.documents}
+        live={journey.source === "airtable"}
+        className="mt-6"
+      />
     </div>
   );
 }

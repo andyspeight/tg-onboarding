@@ -11,7 +11,7 @@
  * measure, swapped for a shared store (e.g. Upstash) alongside auth.
  */
 
-const MAX_BODY_BYTES = 10_000;
+const DEFAULT_MAX_BODY_BYTES = 10_000;
 
 const hits = new Map<string, number[]>();
 
@@ -60,6 +60,7 @@ export async function guardPost(
   request: Request,
   route: string,
   limitPerMinute: number,
+  maxBodyBytes: number = DEFAULT_MAX_BODY_BYTES,
 ): Promise<{ ok: true; body: unknown } | { ok: false; response: Response }> {
   if (!sameOrigin(request)) {
     console.warn(`[api/${route}] rejected: origin check failed`);
@@ -72,13 +73,13 @@ export async function guardPost(
   }
 
   const contentLength = Number(request.headers.get("content-length") ?? "0");
-  if (contentLength > MAX_BODY_BYTES) {
+  if (contentLength > maxBodyBytes) {
     return { ok: false, response: jsonError(413, "Request too large") };
   }
 
   try {
     const text = await request.text();
-    if (text.length > MAX_BODY_BYTES) {
+    if (text.length > maxBodyBytes) {
       return { ok: false, response: jsonError(413, "Request too large") };
     }
     return { ok: true, body: JSON.parse(text) };
