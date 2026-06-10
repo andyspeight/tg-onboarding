@@ -18,7 +18,7 @@ It exists to solve the single biggest problem in the business: **post-go-live "w
 This is also the **first build being run in Claude Code as a trial** of moving development here. Treat it as a real product, not a throwaway.
 
 ## Status
-Phase 1 in progress. Next.js app scaffolded; Phase 1 screen 1 (welcome portal + seven-phase journey on mock data) built, then reconciled against the approved prototype (`reference/onboarding-prototype.html`) — slice 1 (welcome landing, seven-phase journey, progress bar) aligned. Live state lives in the Projects Airtable (see below).
+Phase 1 feature-complete and verified end to end on production (10 Jun 2026): portal reads live from the TG Onboarding base and persists tasks, intake, confidence, training completions, uploads and engagement signals back to it. Sign-off review at `docs/phase-1-signoff.md` — awaiting Andy's sign-off; Training URLs pending in the base. Phase 2 (internal dashboard + wilting alerts + auth) is next. Live state lives in the Projects Airtable (see below).
 
 ## Locked decisions — do NOT re-open these
 - **Build it ourselves** on the existing stack. We are *not* buying Dock / OnRamp / Userpilot (all benchmarked already).
