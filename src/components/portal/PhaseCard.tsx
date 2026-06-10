@@ -96,7 +96,7 @@ export function PhaseCard({
 
       {!collapsed && (
         <div id={panelId} className="border-t border-border px-4 pb-5 sm:px-5">
-          <p className="pt-3.5 text-[13px] leading-relaxed text-fg-muted">
+          <p className="max-w-[65ch] pt-3.5 text-[13px] leading-relaxed text-fg-muted">
             {phase.summary}
             {phase.estimateLabel && (
               <span className="text-fg-faint"> · {phase.estimateLabel}</span>

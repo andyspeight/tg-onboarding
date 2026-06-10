@@ -17,7 +17,7 @@ export function QuickStats({ stats }: { stats: WorkloadStats }) {
   ];
 
   return (
-    <dl className="grid grid-cols-3 gap-2.5">
+    <dl className="grid grid-cols-3 gap-3">
       {cards.map((card, index) => (
         <div
           key={card.label}

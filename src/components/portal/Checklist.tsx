@@ -145,7 +145,7 @@ export function Checklist({ tasks, asOf, onCycle }: ChecklistProps) {
                 )}
               </span>
               {task.description && !done && (
-                <span className="mt-0.5 block text-[13px] leading-relaxed text-fg-muted">
+                <span className="mt-0.5 block max-w-[65ch] text-[13px] leading-relaxed text-fg-muted">
                   {task.description}
                 </span>
               )}

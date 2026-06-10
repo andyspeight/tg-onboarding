@@ -68,7 +68,7 @@ export function WelcomeHero({
       <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-fg">
         {greeting}, {firstName}
       </h1>
-      <p className="mt-1.5 text-sm leading-relaxed text-fg-muted">
+      <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-fg-muted">
         Your new{" "}
         <strong className="font-semibold text-fg">{company}</strong> site is
         taking shape. This is your plan all the way to launch and beyond.

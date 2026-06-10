@@ -211,27 +211,41 @@ export function IntakeForm({
                     event.preventDefault();
                     saveSection(section.id);
                   }}
-                  className="space-y-4 border-t border-border px-4 pb-5 pt-4 sm:px-5"
+                  className="border-t border-border px-4 pb-5 pt-4 sm:px-5"
                 >
-                  {section.fields.map((field) => (
-                    <Field
-                      key={field.id}
-                      field={field}
-                      value={values[field.id] ?? ""}
-                      selections={selections[field.id] ?? []}
-                      files={files[field.id] ?? []}
-                      onChange={(value) =>
-                        setValues((prev) => ({ ...prev, [field.id]: value }))
-                      }
-                      onSelectionsChange={(next) =>
-                        setSelections((prev) => ({ ...prev, [field.id]: next }))
-                      }
-                      onFilesChange={(next) =>
-                        setFiles((prev) => ({ ...prev, [field.id]: next }))
-                      }
-                    />
-                  ))}
-                  <div className="flex justify-end pt-1">
+                  {/* Short inputs pair up on wider screens; big fields span. */}
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {section.fields.map((field) => (
+                      <div
+                        key={field.id}
+                        className={
+                          field.type === "textarea" || field.type === "upload"
+                            ? "sm:col-span-2"
+                            : ""
+                        }
+                      >
+                        <Field
+                          field={field}
+                          value={values[field.id] ?? ""}
+                          selections={selections[field.id] ?? []}
+                          files={files[field.id] ?? []}
+                          onChange={(value) =>
+                            setValues((prev) => ({ ...prev, [field.id]: value }))
+                          }
+                          onSelectionsChange={(next) =>
+                            setSelections((prev) => ({
+                              ...prev,
+                              [field.id]: next,
+                            }))
+                          }
+                          onFilesChange={(next) =>
+                            setFiles((prev) => ({ ...prev, [field.id]: next }))
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex justify-end pt-5">
                     <button
                       type="submit"
                       className="press h-10 cursor-pointer rounded-md bg-accent px-6 text-sm font-semibold text-accent-contrast transition-colors hover:bg-accent-strong"

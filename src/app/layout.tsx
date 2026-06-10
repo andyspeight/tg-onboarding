@@ -14,8 +14,9 @@ export const metadata: Metadata = {
     "Your guided journey to launching with Travelgenix, one clear step at a time.",
 };
 
-// Applied before paint so the chosen theme never flashes on load.
-const themeInitScript = `(function(){try{var t=localStorage.getItem('tg-theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');}catch(e){}})();`;
+// Applied before paint so a saved theme never flashes on load. Light is the
+// default for everyone; dark only ever comes from the user's own toggle.
+const themeInitScript = `(function(){try{if(localStorage.getItem('tg-theme')==='dark')document.documentElement.classList.add('dark');}catch(e){}})();`;
 
 export default function RootLayout({
   children,
