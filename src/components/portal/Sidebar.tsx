@@ -12,6 +12,7 @@ import {
   ClipboardCheckIcon,
   FolderIcon,
   PencilIcon,
+  TagIcon,
 } from "@/components/icons";
 
 export interface NavItem {
@@ -27,6 +28,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/details", label: "Your details", Icon: PencilIcon },
   { href: "/documents", label: "Documents", Icon: FolderIcon },
   { href: "/training", label: "Training", Icon: BookIcon },
+  { href: "/suppliers", label: "Suppliers", Icon: TagIcon },
   { href: null, label: "Messages", Icon: ChatIcon },
 ];
 

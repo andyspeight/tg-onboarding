@@ -177,4 +177,8 @@ export interface AdminSupplier {
   name: string;
   category: SupplierCategory;
   active: boolean;
+  description: string;
+  /** Raw comma-delimited string as stored; split for pills at render. */
+  features: string;
+  links: { label: string; url: string }[];
 }

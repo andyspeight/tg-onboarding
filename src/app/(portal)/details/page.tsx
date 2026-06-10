@@ -23,6 +23,7 @@ export default async function DetailsPage() {
         sections={journey.intake}
         responses={journey.intakeResponses}
         live={journey.source === "airtable"}
+        suppliers={journey.suppliers}
         className="mt-6"
       />
     </div>

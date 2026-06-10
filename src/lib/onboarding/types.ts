@@ -136,6 +136,23 @@ export interface IntakeSection {
 
 export type DocumentStatus = "signed" | "available" | "pending";
 
+/** A labelled link rendered as a button on a supplier card. */
+export interface SupplierLink {
+  label: string;
+  url: string;
+}
+
+/** A supplier as shown to clients: card with description, pills and links. */
+export interface PortalSupplier {
+  id: string;
+  name: string;
+  category: string;
+  description?: string;
+  /** Rendered as feature pills. */
+  features: string[];
+  links: SupplierLink[];
+}
+
 /** A document in the client's hub, grouped by category. */
 export interface ClientDocument {
   id: string;
@@ -162,6 +179,8 @@ export interface OnboardingJourney {
   /** Smart intake form definition. Tier filtering happens in the data layer. */
   intake: IntakeSection[];
   documents: ClientDocument[];
+  /** Active suppliers, rich cards for the intake picker and directory. */
+  suppliers: PortalSupplier[];
   /** Saved intake answers, keyed by field id (multi-selects comma-joined). */
   intakeResponses: Record<string, string>;
   /** Training items this client has marked done. */

@@ -146,7 +146,30 @@ const SUPPLIER_F = {
   name: "fldLSsHcN5ofcuT0l",
   category: "fldIOHIdyvcf4Lgh0",
   active: "fldzPuJyXXsoCylu8",
+  description: "fldfMbRzmRjw1ELhn",
+  features: "fldeQDdMPLxL7PSMo",
+  link1Label: "fldxyeA1LQ6g5bVJ2",
+  link1Url: "fldBHuSBLUusjDL5c",
+  link2Label: "fldxgEvIbHm70srCL",
+  link2Url: "fldHcmlP9R68r9ZUe",
+  link3Label: "flddXjjm0SOdY0WXr",
+  link3Url: "fldM18EpPBCINrBji",
 };
+
+/** The three (label, url) field-id pairs on the Suppliers table. */
+const SUPPLIER_LINK_FIELDS: [string, string][] = [
+  [SUPPLIER_F.link1Label, SUPPLIER_F.link1Url],
+  [SUPPLIER_F.link2Label, SUPPLIER_F.link2Url],
+  [SUPPLIER_F.link3Label, SUPPLIER_F.link3Url],
+];
+
+function supplierLinks(record: AirtableRecord): { label: string; url: string }[] {
+  return SUPPLIER_LINK_FIELDS.flatMap(([labelField, urlField]) => {
+    const url = str(record, urlField);
+    if (!url) return [];
+    return [{ label: str(record, labelField) || "Visit website", url }];
+  });
+}
 
 const RESPONSE_F = {
   field: "fldEZjLopyUYE1RNg",
@@ -585,6 +608,24 @@ export async function fetchJourneyFromAirtable(): Promise<OnboardingJourney | nu
       notifications,
       intake: intakeWithLiveSuppliers(supplierRecords),
       documents,
+      suppliers: supplierRecords
+        .filter((record) => bool(record, SUPPLIER_F.active))
+        .map((record) => ({
+          id: record.id,
+          name: str(record, SUPPLIER_F.name),
+          category: str(record, SUPPLIER_F.category),
+          description: str(record, SUPPLIER_F.description) || undefined,
+          features: str(record, SUPPLIER_F.features)
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean),
+          links: supplierLinks(record),
+        }))
+        .sort(
+          (a, b) =>
+            a.category.localeCompare(b.category) ||
+            a.name.localeCompare(b.name),
+        ),
       intakeResponses,
       trainingCompleted,
       confidence: latestConfidence
@@ -1185,6 +1226,9 @@ export async function fetchAdminSuppliers(): Promise<AdminSupplier[] | null> {
         name: str(record, SUPPLIER_F.name),
         category: asSupplierCategory(str(record, SUPPLIER_F.category)),
         active: bool(record, SUPPLIER_F.active),
+        description: str(record, SUPPLIER_F.description),
+        features: str(record, SUPPLIER_F.features),
+        links: supplierLinks(record),
       }))
       .sort(
         (a, b) =>
@@ -1196,19 +1240,50 @@ export async function fetchAdminSuppliers(): Promise<AdminSupplier[] | null> {
   }
 }
 
+export interface SupplierInput {
+  name: string;
+  category: SupplierCategory;
+  description: string;
+  /** Raw comma-delimited features string. */
+  features: string;
+  links: { label: string; url: string }[];
+}
+
+function supplierFields(input: SupplierInput): Record<string, unknown> {
+  const fields: Record<string, unknown> = {
+    [SUPPLIER_F.name]: input.name,
+    [SUPPLIER_F.category]: input.category,
+    [SUPPLIER_F.description]: input.description,
+    [SUPPLIER_F.features]: input.features,
+  };
+  SUPPLIER_LINK_FIELDS.forEach(([labelField, urlField], index) => {
+    const link = input.links[index];
+    fields[labelField] = link?.label ?? "";
+    fields[urlField] = link?.url ?? "";
+  });
+  return fields;
+}
+
 /** Add a supplier. New ones are active so they show in the intake at once. */
 export async function createSupplier(
   config: AirtableConfig,
-  name: string,
-  category: SupplierCategory,
+  input: SupplierInput,
 ): Promise<void> {
   await createRecords(config, TABLES.suppliers, [
-    {
-      [SUPPLIER_F.name]: name,
-      [SUPPLIER_F.category]: category,
-      [SUPPLIER_F.active]: true,
-    },
+    { ...supplierFields(input), [SUPPLIER_F.active]: true },
   ]);
+}
+
+/** Update a supplier's card details. Returns false if it doesn't exist. */
+export async function updateSupplier(
+  config: AirtableConfig,
+  supplierId: string,
+  input: SupplierInput,
+): Promise<boolean> {
+  const record = await getRecord(config, TABLES.suppliers, supplierId);
+  if (!record) return false;
+  await updateRecord(config, TABLES.suppliers, supplierId, supplierFields(input));
+  return true;
 }
 
 /** Show or hide a supplier in the intake without deleting it. */
@@ -1222,6 +1297,17 @@ export async function setSupplierActive(
   await updateRecord(config, TABLES.suppliers, supplierId, {
     [SUPPLIER_F.active]: active,
   });
+  return true;
+}
+
+/** Remove a supplier outright (past intake answers keep the stored name). */
+export async function deleteSupplier(
+  config: AirtableConfig,
+  supplierId: string,
+): Promise<boolean> {
+  const record = await getRecord(config, TABLES.suppliers, supplierId);
+  if (!record) return false;
+  await deleteRecord(config, TABLES.suppliers, supplierId);
   return true;
 }
 

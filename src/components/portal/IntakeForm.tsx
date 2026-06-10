@@ -3,10 +3,60 @@
 import { useState } from "react";
 import { CheckIcon, ChevronDownIcon } from "@/components/icons";
 import { ProgressBar } from "@/components/ProgressBar";
-import type { IntakeField, IntakeSection } from "@/lib/onboarding/types";
+import type {
+  IntakeField,
+  IntakeSection,
+  PortalSupplier,
+} from "@/lib/onboarding/types";
 import type { UploadedFile } from "@/lib/onboarding/uploads";
 import { MultiSelect } from "./MultiSelect";
+import { SupplierCard } from "./SupplierCard";
 import { UploadField } from "./UploadField";
+
+/** Which intake field shows which supplier category as rich cards. */
+const SUPPLIER_FIELD_CATEGORY: Record<string, string> = {
+  "suppliers-package": "Package holidays",
+  "suppliers-accommodation": "Accommodation",
+  "suppliers-flights": "Flights",
+};
+
+function SupplierPicker({
+  suppliers,
+  selected,
+  onChange,
+}: {
+  suppliers: PortalSupplier[];
+  selected: string[];
+  onChange: (selected: string[]) => void;
+}) {
+  function toggle(name: string) {
+    onChange(
+      selected.includes(name)
+        ? selected.filter((item) => item !== name)
+        : [...selected, name],
+    );
+  }
+
+  return (
+    <div>
+      <div className="grid gap-2.5">
+        {suppliers.map((supplier) => (
+          <SupplierCard
+            key={supplier.id}
+            supplier={supplier}
+            selected={selected.includes(supplier.name)}
+            onToggle={() => toggle(supplier.name)}
+          />
+        ))}
+      </div>
+      <p className="mt-2 text-[12px] text-fg-faint">
+        {selected.length === 0
+          ? "Tick everyone you work with."
+          : `${selected.length} selected.`}
+      </p>
+    </div>
+  );
+}
 
 const inputClasses =
   "w-full rounded-md border border-border bg-surface px-3.5 text-[15px] text-fg placeholder:text-fg-faint transition-[border-color,box-shadow] focus:border-accent-bright focus:outline-none focus:ring-[3px] focus:ring-accent-bright/15";
@@ -17,6 +67,7 @@ function Field({
   selections,
   files,
   live,
+  suppliers,
   onChange,
   onSelectionsChange,
   onFilesChange,
@@ -26,10 +77,15 @@ function Field({
   selections: string[];
   files: UploadedFile[];
   live: boolean;
+  suppliers: PortalSupplier[];
   onChange: (value: string) => void;
   onSelectionsChange: (selections: string[]) => void;
   onFilesChange: (files: UploadedFile[]) => void;
 }) {
+  const supplierCategory = SUPPLIER_FIELD_CATEGORY[field.id];
+  const categorySuppliers = supplierCategory
+    ? suppliers.filter((supplier) => supplier.category === supplierCategory)
+    : [];
   return (
     <div>
       <label
@@ -90,15 +146,22 @@ function Field({
           ))}
         </select>
       )}
-      {field.type === "multiselect" && (
-        <MultiSelect
-          id={field.id}
-          options={field.options ?? []}
-          selected={selections}
-          onChange={onSelectionsChange}
-          placeholder={field.placeholder}
-        />
-      )}
+      {field.type === "multiselect" &&
+        (categorySuppliers.length > 0 ? (
+          <SupplierPicker
+            suppliers={categorySuppliers}
+            selected={selections}
+            onChange={onSelectionsChange}
+          />
+        ) : (
+          <MultiSelect
+            id={field.id}
+            options={field.options ?? []}
+            selected={selections}
+            onChange={onSelectionsChange}
+            placeholder={field.placeholder}
+          />
+        ))}
       {field.type === "upload" && (
         <UploadField
           id={field.id}
@@ -141,11 +204,13 @@ export function IntakeForm({
   sections,
   responses,
   live,
+  suppliers,
   className = "",
 }: {
   sections: IntakeSection[];
   responses: Record<string, string>;
   live: boolean;
+  suppliers: PortalSupplier[];
   className?: string;
 }) {
   const [values, setValues] = useState<Record<string, string>>(() => {
@@ -317,6 +382,7 @@ export function IntakeForm({
                           selections={selections[field.id] ?? []}
                           files={files[field.id] ?? []}
                           live={live}
+                          suppliers={suppliers}
                           onChange={(value) =>
                             setValues((prev) => ({ ...prev, [field.id]: value }))
                           }

@@ -349,7 +349,8 @@ For free-text search use `Airtable:search_records` instead — it's faster and s
 - **Tables**:
   - Clients — `tblJshqEDEbezPemO` (test client record: `recY6k89hWSw8oUBc`; fields: Company `fldV3aAKMwGbKweMJ`, Contact Name `fldPZiMqRPXgjI2Pi`, Contact Email `fldBzYYxIjn2ERqXN`, Package `fldOf62P3opdqJ5Gx`, Onboarding Started `fldiMG1sZjsRxJuer`, Account Manager `fld4D5xpWTRS7sMUb`, Last Active `fldUegCPTvsPnK5pG`)
   - Phases — `tbl3KczJTtCcBMiMY` (7 rows, journey template; Title `fldJyX52ytUEgAXJT`, Number `fldFT9rDlGXzA8442`, Slug `fld1ZvEe0zYjVkGLO`, Summary `fldpMuN9n4w63QgCC`, Estimate Label `fld5gyVsQjZcFSQBH`, Gate Min Rating `fldZ8sX5gNdrbcPLe`, Gate Prompt `fldOtOnBM6jeqwAwx`, Gate Help `fldVLfUMiuvAkPBaj`)
-  - Suppliers — `tblzkvTGKU8dHbwz2` (24 rows; the central list feeding intake multi-selects; Name `fldLSsHcN5ofcuT0l`, Category `fldIOHIdyvcf4Lgh0`, Active `fldzPuJyXXsoCylu8`)
+  - Suppliers — `tblzkvTGKU8dHbwz2` (24 rows; the central list feeding intake multi-selects AND the rich client supplier cards; Name `fldLSsHcN5ofcuT0l`, Category `fldIOHIdyvcf4Lgh0`, Active `fldzPuJyXXsoCylu8`, Description `fldfMbRzmRjw1ELhn`, Features (comma list → pills) `fldeQDdMPLxL7PSMo`, Link 1 Label/URL `fldxyeA1LQ6g5bVJ2`/`fldBHuSBLUusjDL5c`, Link 2 `fldxgEvIbHm70srCL`/`fldHcmlP9R68r9ZUe`, Link 3 `flddXjjm0SOdY0WXr`/`fldM18EpPBCINrBji`)
+  - Automation Log — `tbl6JmGMnuRvHbYuc` (engine actions; dedupes sends; powers the dashboard panel)
   - Tasks — `tblrqtEreCM7lF03k` (30 rows; Title `fld19FvLTPM0anxAR`, Client `fldEHOJvbSSxXELFJ`, Phase `fldmOymKdOmuv4Emo`, Description `fldXBJghkP2yZg8vA`, Audience `fld69yi7AgXE4Z2qp`, Owner `fldn32C8OALO65EqR`, Status `fld0VjqmNbReueweZ`, Due Date `fld2naX3VklPlUe6t`, Optional `fldzxDMQptCkAgDff`, Order `fldqdMOSlEYNIuohP`)
   - Training — `tbleBDB9oqkGpxt1t` (10 rows; URL `fld70gfp57xV8WBYw` empty = Coming soon in the portal)
   - Training Completions — `tblPuZGHHSs9Au7JL` (write-side, empty)

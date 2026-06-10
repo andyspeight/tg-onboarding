@@ -265,6 +265,29 @@ export function makeMockJourney(): OnboardingJourney {
     intakeResponses: {},
     trainingCompleted: [],
     confidence: null,
+    suppliers: [
+      ...PACKAGE_SUPPLIERS.map((name, index) => ({
+        id: `mock-pkg-${index}`,
+        name,
+        category: "Package holidays",
+        features: [],
+        links: [],
+      })),
+      ...ACCOMMODATION_SUPPLIERS.map((name, index) => ({
+        id: `mock-acc-${index}`,
+        name,
+        category: "Accommodation",
+        features: [],
+        links: [],
+      })),
+      ...FLIGHT_SUPPLIERS.map((name, index) => ({
+        id: `mock-fly-${index}`,
+        name,
+        category: "Flights",
+        features: [],
+        links: [],
+      })),
+    ],
     client: {
       company: "Wanderlust Travel",
       contactName: "Sarah Mitchell",
