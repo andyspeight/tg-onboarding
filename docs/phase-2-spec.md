@@ -54,15 +54,18 @@ Agent-to-client messaging (per the Phase 1 spec's deferral): Messages tab goes l
 Real contextual help through the Phase 1 seam (`src/lib/luna/`): server-side route, journey-aware context, costs capped per the security skill. **[Andy: confirmed as Phase 2? Read his scoping answer as yes — shout if it should wait for Phase 3.]**
 
 ## Proposed slice order
-1. Staff SSO gate + `/admin` shell
-2. Overview + client health list (read-only dashboard, health rules live)
-3. Client detail + team tasks
+> 10 Jun update: Control SSO is **parked** (Andy's call). The staff gate ships as an interim shared passcode (`ADMIN_PASSCODE` env var, signed httpOnly session cookie, fails closed) and swaps for the Control introspection client when revived — the prerequisites list above still applies at that point.
+
+1. ~~Staff SSO gate~~ Interim passcode gate + `/admin` shell — **shipped 10 Jun**
+2. Overview + client health list (health rules live) + team tasks — **shipped 10 Jun**
+3. Client detail view
 4. Add client (provisioning + login issuance)
 5. Client auth + multi-tenancy + security interims closed
-6. Automation engine (nudges, milestones, alert emails via Sendrif)
+6. Automation engine (nudges, milestones, alert emails via SendGrid)
 7. Suppliers admin
 8. Messaging panel
 9. Luna wiring
+10. Control SSO swap-in (when revived)
 
 ## Out of scope (Phase 3)
 Milestone *celebrations* in the portal, post-go-live transition flourishes, NPS surveys, and any delight features.

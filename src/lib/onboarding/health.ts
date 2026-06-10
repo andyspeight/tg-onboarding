@@ -1,0 +1,104 @@
+/**
+ * Client health rules — the wilting detector. Pure functions over numbers
+ * the data layer derives, so thresholds are tunable in one place and the
+ * rules are testable without Airtable. Proposed values per docs/phase-2-spec.md;
+ * tune with Andy as real behaviour comes in.
+ */
+
+export type HealthLevel = "green" | "amber" | "red";
+
+export const HEALTH_RULES = {
+  /** Days without portal activity before a client counts as slowing. */
+  quietAmberDays: 5,
+  /** Days quiet before they're at risk. */
+  quietRedDays: 10,
+  /** Overdue client-owed tasks: slowing at this many... */
+  overdueAmberCount: 1,
+  /** ...at risk at this many. */
+  overdueRedCount: 3,
+  /** Behind pace when under pacePct progress by paceDay days in. */
+  paceDay: 21,
+  pacePct: 30,
+};
+
+export interface ClientHealthInput {
+  daysQuiet: number;
+  overdueCount: number;
+  dayCount: number;
+  pct: number;
+}
+
+export interface ClientHealth {
+  health: HealthLevel;
+  /** Plain-English reasons, e.g. "Quiet for 12 days". Empty when green. */
+  reasons: string[];
+}
+
+export function deriveHealth(input: ClientHealthInput): ClientHealth {
+  const reasons: string[] = [];
+  let health: HealthLevel = "green";
+
+  const overdueLabel =
+    input.overdueCount === 1 ? "1 task overdue" : `${input.overdueCount} tasks overdue`;
+
+  if (
+    input.daysQuiet >= HEALTH_RULES.quietRedDays ||
+    input.overdueCount >= HEALTH_RULES.overdueRedCount
+  ) {
+    health = "red";
+    if (input.daysQuiet >= HEALTH_RULES.quietRedDays) {
+      reasons.push(`Quiet for ${input.daysQuiet} days`);
+    }
+    if (input.overdueCount >= HEALTH_RULES.overdueRedCount) {
+      reasons.push(overdueLabel);
+    }
+    return { health, reasons };
+  }
+
+  if (input.daysQuiet >= HEALTH_RULES.quietAmberDays) {
+    health = "amber";
+    reasons.push(`Quiet for ${input.daysQuiet} days`);
+  }
+  if (input.overdueCount >= HEALTH_RULES.overdueAmberCount) {
+    health = "amber";
+    reasons.push(overdueLabel);
+  }
+  if (input.dayCount >= HEALTH_RULES.paceDay && input.pct < HEALTH_RULES.pacePct) {
+    health = "amber";
+    reasons.push(`Only ${input.pct}% complete by day ${input.dayCount}`);
+  }
+
+  return { health, reasons };
+}
+
+/* Shapes the admin dashboard renders. */
+
+export interface AdminClientSummary {
+  id: string;
+  company: string;
+  contactName: string;
+  plan?: string;
+  pct: number;
+  phaseTitle: string;
+  dayCount: number;
+  daysQuiet: number;
+  overdueCount: number;
+  intakePct: number;
+  health: HealthLevel;
+  reasons: string[];
+}
+
+export type TeamTaskUrgency = "overdue" | "urgent" | "upcoming";
+
+export interface AdminTeamTask {
+  id: string;
+  title: string;
+  clientCompany: string;
+  dueDate?: string;
+  urgency: TeamTaskUrgency;
+}
+
+export interface AdminSnapshot {
+  clients: AdminClientSummary[];
+  teamTasks: AdminTeamTask[];
+}

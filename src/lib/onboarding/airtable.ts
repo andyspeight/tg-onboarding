@@ -13,7 +13,14 @@ import type {
   TrainingResource,
 } from "./types";
 import { INTAKE_SECTIONS } from "./mock-data";
-import { ukToday } from "./dates";
+import { daysUntil, ukToday } from "./dates";
+import {
+  deriveHealth,
+  type AdminClientSummary,
+  type AdminSnapshot,
+  type AdminTeamTask,
+  type TeamTaskUrgency,
+} from "./health";
 
 /**
  * Airtable layer for the TG Onboarding base (appOSIsT3wpkTmit9).
@@ -716,6 +723,179 @@ export async function setTrainingCompletion(
     }
   }
   return true;
+}
+
+/**
+ * Everything the admin dashboard needs in one read: every client with
+ * derived health, plus the open team tasks. Null when Airtable isn't
+ * configured — the dashboard shows a connect message instead.
+ */
+export async function fetchAdminSnapshot(): Promise<AdminSnapshot | null> {
+  const config = airtableConfig();
+  if (!config) return null;
+
+  try {
+    const [clients, phaseRecords, taskRecords, responseRecords] =
+      await Promise.all([
+        listAll(config, TABLES.clients),
+        listAll(config, TABLES.phases),
+        listAll(config, TABLES.tasks),
+        listAll(config, TABLES.intakeResponses),
+      ]);
+
+    const today = ukToday();
+    const nowMs = Date.now();
+    const phasesSorted = [...phaseRecords].sort(
+      (a, b) => num(a, PHASE_F.number) - num(b, PHASE_F.number),
+    );
+
+    const summaries: AdminClientSummary[] = clients.map((clientRecord) => {
+      const clientId = clientRecord.id;
+      const plan = str(clientRecord, CLIENT_F.package) || undefined;
+      const tasks = taskRecords.filter((record) =>
+        links(record, TASK_F.client).includes(clientId),
+      );
+
+      const countable = tasks.filter(
+        (record) =>
+          asAudience(str(record, TASK_F.audience)) === "client" &&
+          !bool(record, TASK_F.optional),
+      );
+      const doneCount = countable.filter(
+        (record) => asStatus(str(record, TASK_F.status)) === "done",
+      ).length;
+      const pct =
+        countable.length === 0
+          ? 0
+          : Math.round((doneCount / countable.length) * 100);
+
+      // Overdue = tasks the CLIENT owes that have slipped.
+      const overdueCount = tasks.filter((record) => {
+        const due = str(record, TASK_F.due);
+        return (
+          asAudience(str(record, TASK_F.audience)) === "client" &&
+          asOwner(str(record, TASK_F.owner)) !== "travelgenix" &&
+          asStatus(str(record, TASK_F.status)) !== "done" &&
+          due !== "" &&
+          daysUntil(due, today) < 0
+        );
+      }).length;
+
+      // First phase whose countable tasks aren't all done = where they are.
+      const currentPhase = phasesSorted.find((phase) => {
+        const phaseCountable = countable.filter((record) =>
+          links(record, TASK_F.phase).includes(phase.id),
+        );
+        return (
+          phaseCountable.length > 0 &&
+          phaseCountable.some(
+            (record) => asStatus(str(record, TASK_F.status)) !== "done",
+          )
+        );
+      });
+
+      const startedAt = str(clientRecord, CLIENT_F.started);
+      const dayCount = startedAt
+        ? Math.max(0, -daysUntil(startedAt, today))
+        : 0;
+
+      const lastActive = str(clientRecord, CLIENT_F.lastActive) || startedAt;
+      const daysQuiet = lastActive
+        ? Math.max(0, Math.floor((nowMs - Date.parse(lastActive)) / 86_400_000))
+        : 0;
+
+      // Intake completion against the sections this client's tier sees.
+      const tierFields = INTAKE_SECTIONS.filter(
+        (section) =>
+          !section.showForPlans ||
+          (plan !== undefined && section.showForPlans.includes(plan)),
+      )
+        .flatMap((section) => section.fields)
+        .filter((field) => field.type !== "upload");
+      const answeredIds = new Set(
+        responseRecords
+          .filter(
+            (record) =>
+              links(record, RESPONSE_F.client).includes(clientId) &&
+              str(record, RESPONSE_F.value) !== "",
+          )
+          .map((record) => str(record, RESPONSE_F.field)),
+      );
+      const answered = tierFields.filter((field) =>
+        answeredIds.has(field.id),
+      ).length;
+      const intakePct =
+        tierFields.length === 0
+          ? 0
+          : Math.round((answered / tierFields.length) * 100);
+
+      const { health, reasons } = deriveHealth({
+        daysQuiet,
+        overdueCount,
+        dayCount,
+        pct,
+      });
+
+      return {
+        id: clientId,
+        company: str(clientRecord, CLIENT_F.company),
+        contactName: str(clientRecord, CLIENT_F.contactName),
+        plan,
+        pct,
+        phaseTitle: currentPhase
+          ? str(currentPhase, PHASE_F.title)
+          : "Complete",
+        dayCount,
+        daysQuiet,
+        overdueCount,
+        intakePct,
+        health,
+        reasons,
+      };
+    });
+
+    const healthRank = { red: 0, amber: 1, green: 2 };
+    summaries.sort(
+      (a, b) =>
+        healthRank[a.health] - healthRank[b.health] ||
+        b.daysQuiet - a.daysQuiet,
+    );
+
+    const companyById = new Map(
+      clients.map((record) => [record.id, str(record, CLIENT_F.company)]),
+    );
+    const teamTasks: AdminTeamTask[] = taskRecords
+      .filter(
+        (record) =>
+          asStatus(str(record, TASK_F.status)) !== "done" &&
+          (asAudience(str(record, TASK_F.audience)) === "internal" ||
+            asOwner(str(record, TASK_F.owner)) === "travelgenix"),
+      )
+      .map((record) => {
+        const due = str(record, TASK_F.due);
+        let urgency: TeamTaskUrgency = "upcoming";
+        if (due !== "") {
+          const diff = daysUntil(due, today);
+          urgency = diff < 0 ? "overdue" : diff <= 2 ? "urgent" : "upcoming";
+        }
+        return {
+          id: record.id,
+          title: str(record, TASK_F.title),
+          clientCompany:
+            companyById.get(firstLink(record, TASK_F.client)) ?? "",
+          dueDate: due || undefined,
+          urgency,
+        };
+      })
+      .sort((a, b) =>
+        (a.dueDate ?? "9999-12-31").localeCompare(b.dueDate ?? "9999-12-31"),
+      );
+
+    return { clients: summaries, teamTasks };
+  } catch (error) {
+    console.error("[onboarding/airtable] admin snapshot failed:", error);
+    return null;
+  }
 }
 
 const CONTENT_URL = "https://content.airtable.com/v0";
