@@ -50,7 +50,7 @@ Out of scope for Phase 1: the internal staff dashboard, real engagement-alert au
 - **Staged builds, not big-bang.** Ship Phase 1 in reviewable slices. Surface only genuine decisions.
 - **Complete files, not patches/snippets.** When you change a file, output/commit the whole file.
 - **Never rebuild from scratch** — iterate on what exists. If unsure, ask.
-- You can **commit directly to the repo** — the old "hand Andy individual files to paste into GitHub" workaround no longer applies here. Use clear, small commits.
+- You can **commit directly to the repo** — the old "hand Andy individual files to paste into GitHub" workaround no longer applies here. Use clear, small commits, and **push straight to `main`**: the production URL (deployed from `main`) is Andy's review surface. No separate review branches unless he asks.
 - **Design bar is high.** Before any UI, consult the design skills (below). No generic AI look.
 - **Security before ship.** Sandbox/dev only for now — **no live keys, no secrets in client-side code** (env vars only), validate and sanitise all input, lock down any API route.
 - **Client-facing copy** gets the humaniser treatment — warm, plain, no AI tells.
