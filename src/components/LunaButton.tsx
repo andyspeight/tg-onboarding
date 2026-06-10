@@ -37,7 +37,7 @@ export function LunaButton() {
         <div
           role="dialog"
           aria-label="Ask Luna"
-          className="w-[18rem] origin-bottom-right rounded-2xl border border-border bg-surface p-4 shadow-card sm:w-80"
+          className="anim-pop w-[18rem] origin-bottom-right rounded-2xl border border-border bg-surface p-4 shadow-float sm:w-80"
         >
           <div className="flex items-center gap-2">
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-soft text-accent">
@@ -49,9 +49,9 @@ export function LunaButton() {
             </span>
           </div>
           <p className="mt-3 text-sm leading-relaxed text-fg-muted">
-            Luna is your in-product guide — soon you’ll be able to ask a question
-            right here and get an answer that knows exactly where you are in your
-            onboarding. Until then, your specialist is a message away.
+            Luna is your in-product guide. Soon you’ll be able to ask a question
+            right here and get an answer that knows exactly where you are in
+            your onboarding. Until then, your account manager is a message away.
           </p>
         </div>
       )}
@@ -60,9 +60,9 @@ export function LunaButton() {
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className="group inline-flex items-center gap-2 rounded-full bg-brand-gradient py-3 pl-3.5 pr-4 text-sm font-semibold text-white shadow-card transition-transform hover:-translate-y-0.5"
+        className="press group inline-flex cursor-pointer items-center gap-2 rounded-full bg-brand-gradient py-3 pl-3.5 pr-4 text-sm font-semibold text-white shadow-card transition-transform hover:-translate-y-0.5"
       >
-        <SparkleIcon className="h-[18px] w-[18px] text-teal" />
+        <SparkleIcon className="h-[18px] w-[18px] text-accent-bright" />
         Ask Luna
       </button>
     </div>

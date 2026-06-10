@@ -1,22 +1,23 @@
 /**
- * Accessible progress bar. Used for the headline journey progress and for
- * per-phase progress. `tone="onDark"` adapts it for the navy hero.
+ * Accessible progress bar. `size="lg"` is the headline journey bar (10px,
+ * prototype gradient); `size="sm"` is the mini per-phase bar (3px). The fill
+ * turns solid green at 100%, matching the prototype.
  */
 interface ProgressBarProps {
   value: number; // 0–100
   label?: string;
-  tone?: "default" | "onDark";
+  size?: "lg" | "sm";
   className?: string;
 }
 
 export function ProgressBar({
   value,
   label,
-  tone = "default",
+  size = "lg",
   className = "",
 }: ProgressBarProps) {
   const clamped = Math.max(0, Math.min(100, Math.round(value)));
-  const onDark = tone === "onDark";
+  const complete = clamped === 100;
 
   return (
     <div
@@ -25,15 +26,13 @@ export function ProgressBar({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-label={label ?? "Progress"}
-      className={`h-2.5 w-full overflow-hidden rounded-full ${
-        onDark ? "bg-white/15" : "bg-bg-subtle"
+      className={`w-full overflow-hidden rounded-full bg-bg-subtle ${
+        size === "lg" ? "h-2.5" : "h-[3px]"
       } ${className}`}
     >
       <div
-        className={`h-full rounded-full transition-[width] duration-700 ease-out ${
-          onDark
-            ? "bg-gradient-to-r from-teal to-[var(--tg-teal-300)]"
-            : "bg-gradient-to-r from-[var(--tg-teal-600)] to-teal"
+        className={`h-full rounded-full transition-[width] duration-700 ease-in-out ${
+          complete ? "bg-success" : "bg-progress-gradient"
         }`}
         style={{ width: `${clamped}%` }}
       />

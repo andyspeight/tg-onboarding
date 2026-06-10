@@ -20,7 +20,7 @@ export function ConfidenceGate({ gate, value, onChange }: ConfidenceGateProps) {
       aria-label="Confidence check before go-live"
       className={`rounded-card border p-5 shadow-soft transition-colors sm:p-6 ${
         passed
-          ? "border-success/40 bg-success-soft"
+          ? "border-success-border bg-success-soft"
           : "border-accent/30 bg-accent-soft/60"
       }`}
     >
@@ -53,7 +53,7 @@ export function ConfidenceGate({ gate, value, onChange }: ConfidenceGateProps) {
                 onClick={() => onChange(rating)}
                 aria-pressed={selected}
                 aria-label={`${rating} out of 10`}
-                className={`h-10 w-10 rounded-lg border text-sm font-semibold transition-colors ${
+                className={`press h-10 w-10 cursor-pointer rounded-lg border text-sm font-semibold transition-colors ${
                   selected
                     ? "border-transparent bg-brand-gradient text-white shadow-soft"
                     : "border-border bg-surface text-fg-muted hover:border-border-strong hover:text-fg"
@@ -70,15 +70,15 @@ export function ConfidenceGate({ gate, value, onChange }: ConfidenceGateProps) {
         </div>
       </div>
 
-      <div className="mt-4 rounded-xl bg-surface/70 p-3 text-[13px] leading-relaxed">
+      <div className="mt-4 rounded-lg bg-surface/70 p-3 text-[13px] leading-relaxed">
         {value === null ? (
           <p className="text-fg-muted">
-            Choose a number to unlock go-live. We gate this on a {gate.minRating}/10
-            or higher — on purpose.
+            Choose a number to unlock go-live. We hold launch until you’re at a{" "}
+            {gate.minRating}/10 or higher, on purpose.
           </p>
         ) : passed ? (
           <p className="font-medium text-success">
-            You’re ready — go-live is unlocked. We’ll launch when you are.
+            You’re ready. Go-live is unlocked, and we’ll launch when you are.
           </p>
         ) : (
           <p className="text-fg-muted">

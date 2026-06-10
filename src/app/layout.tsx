@@ -9,9 +9,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Travelgenix — Your onboarding",
+  title: "Your Travelgenix onboarding",
   description:
-    "Your guided journey to launching with Travelgenix — one clear step at a time.",
+    "Your guided journey to launching with Travelgenix, one clear step at a time.",
 };
 
 // Applied before paint so the chosen theme never flashes on load.

@@ -4,66 +4,89 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
-  Travelgenix brand tokens — navy / teal.
-  These are a tasteful approximation; tune against the real Travelgenix
-  brand palette when it's available. Everything else references the
-  semantic tokens below, so a rebrand is a change in one place.
+  Travelgenix onboarding brand tokens.
+  Palette follows the approved prototype (reference/onboarding-prototype.html):
+  deep teal #0D4F4F primary with #17A2B8 as the bright accent. Muted text tones
+  are nudged from the prototype's greys to clear WCAG contrast. Everything
+  references the semantic tokens below, so a rebrand is a change in one place.
 */
 :root {
-  /* Raw brand scale */
-  --tg-navy-900: #061528;
-  --tg-navy-800: #0b2545;
-  --tg-navy-700: #143257;
-  --tg-navy-600: #1d4373;
-  --tg-teal-600: #0c9486;
-  --tg-teal-500: #12b5a8;
-  --tg-teal-400: #2bd0c2;
-  --tg-teal-300: #7fe6db;
+  /* Raw brand scale (prototype) */
+  --tg-teal-950: #0a3d3d;
+  --tg-teal-900: #0d4f4f;
+  --tg-cyan-500: #17a2b8;
+  --tg-teal-soft: #e8f5f5;
 
   /* Semantic — light */
-  --bg: #f3f7fc;
-  --bg-subtle: #e8f0f9;
+  --bg: #f7f8fa;
+  --bg-subtle: #f0f2f5;
   --surface: #ffffff;
-  --surface-2: #f7fafd;
-  --border: #e3ebf4;
-  --border-strong: #cdd9e8;
-  --fg: #0b2545;
-  --fg-muted: #51637e;
-  --fg-faint: #8595ad;
-  --brand: #0b2545;
-  --accent: #0c8e82;
-  --accent-strong: #0a7368;
+  --surface-2: #fafbfd;
+  --border: #e8ecf0;
+  --border-strong: #d8dee6;
+  --fg: #1a1a2e;
+  --fg-muted: #565d6d;
+  --fg-faint: #7c8493;
+  --brand: var(--tg-teal-900);
+  --brand-deep: var(--tg-teal-950);
+  --accent: var(--tg-teal-900);
+  --accent-strong: var(--tg-teal-950);
+  --accent-bright: var(--tg-cyan-500);
+  --accent-soft: var(--tg-teal-soft);
   --accent-contrast: #ffffff;
-  --accent-soft: #e0f5f2;
-  --ring: #12b5a8;
-  --success: #14866f;
-  --success-soft: #e2f4ee;
-  --warning: #b9791a;
-  --warning-soft: #fbf0dc;
-  --shadow-color: 215 35% 25%;
+  --ring: var(--tg-cyan-500);
+  --success: #2e7d32;
+  --success-soft: #e8f5e9;
+  --success-border: #c8e6c9;
+  --warning: #b45309;
+  --warning-soft: #fff8e1;
+  --warning-border: #ffe082;
+  --danger: #d32f2f;
+  --danger-soft: #fff5f5;
+  --danger-border: #ffcdd2;
+  --info: #1565c0;
+  --info-soft: #e3f2fd;
+  --orange: #c2410c;
+  --orange-soft: #fff3e0;
+  --progress-from: var(--tg-teal-900);
+  --progress-to: var(--tg-cyan-500);
+  --shadow-color: 187 30% 18%;
 }
 
 .dark {
-  --bg: #050f1c;
-  --bg-subtle: #081726;
-  --surface: #0d1f33;
-  --surface-2: #11273f;
-  --border: #1b3450;
-  --border-strong: #294764;
-  --fg: #e7eef7;
-  --fg-muted: #9db0ca;
-  --fg-faint: #647a99;
-  --brand: #e7eef7;
-  --accent: #2bd0c2;
-  --accent-strong: #4bdccf;
-  --accent-contrast: #05121f;
-  --accent-soft: #0e3c3a;
-  --ring: #2bd0c2;
-  --success: #34c9a6;
-  --success-soft: #0e3530;
+  --bg: #0b1212;
+  --bg-subtle: #182423;
+  --surface: #101a1a;
+  --surface-2: #142020;
+  --border: #22322f;
+  --border-strong: #31453f;
+  --fg: #ecf2f1;
+  --fg-muted: #a7b3b2;
+  --fg-faint: #798783;
+  --brand: var(--tg-teal-900);
+  --brand-deep: var(--tg-teal-950);
+  --accent: #2eb4c4;
+  --accent-strong: #4fc8d6;
+  --accent-bright: #2eb4c4;
+  --accent-soft: #103a3e;
+  --accent-contrast: #06181b;
+  --ring: #2eb4c4;
+  --success: #66bb6a;
+  --success-soft: #122a18;
+  --success-border: #1f4527;
   --warning: #e0a64a;
-  --warning-soft: #3a2c12;
-  --shadow-color: 210 60% 2%;
+  --warning-soft: #2e2310;
+  --warning-border: #4a3a16;
+  --danger: #ef7070;
+  --danger-soft: #321414;
+  --danger-border: #4d1f1f;
+  --info: #64a5e8;
+  --info-soft: #12253b;
+  --orange: #f0925a;
+  --orange-soft: #311d0e;
+  --progress-from: #1b8a9b;
+  --progress-to: #4fc8d6;
+  --shadow-color: 190 60% 2%;
 }
 
 @theme inline {
@@ -77,21 +100,31 @@
   --color-fg-muted: var(--fg-muted);
   --color-fg-faint: var(--fg-faint);
   --color-brand: var(--brand);
+  --color-brand-deep: var(--brand-deep);
   --color-accent: var(--accent);
   --color-accent-strong: var(--accent-strong);
-  --color-accent-contrast: var(--accent-contrast);
+  --color-accent-bright: var(--accent-bright);
   --color-accent-soft: var(--accent-soft);
+  --color-accent-contrast: var(--accent-contrast);
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);
+  --color-success-border: var(--success-border);
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
-  --color-navy: var(--tg-navy-800);
-  --color-teal: var(--tg-teal-500);
+  --color-warning-border: var(--warning-border);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-border: var(--danger-border);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-orange: var(--orange);
+  --color-orange-soft: var(--orange-soft);
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
     sans-serif;
 
-  --radius-card: 1rem;
+  /* Prototype radius scale: 10px cards, 6px small (Tailwind md), 16px xl. */
+  --radius-card: 10px;
 }
 
 @layer base {
@@ -112,7 +145,7 @@
   }
 
   ::selection {
-    background-color: var(--tg-teal-500);
+    background-color: var(--tg-cyan-500);
     color: #ffffff;
   }
 
@@ -123,34 +156,118 @@
 }
 
 @layer utilities {
-  /* Soft brand gradient used on the hero + accents */
+  /* The deep-teal brand gradient: sidebar, Luna pill, selected gate rating. */
   .bg-brand-gradient {
     background-image: linear-gradient(
-      135deg,
-      var(--tg-navy-800) 0%,
-      var(--tg-navy-900) 55%,
-      #04101f 100%
+      175deg,
+      var(--tg-teal-900) 0%,
+      var(--tg-teal-950) 100%
     );
   }
 
-  .text-gradient-teal {
+  /* Progress bar fill (light + dark variants come from the tokens). */
+  .bg-progress-gradient {
     background-image: linear-gradient(
       90deg,
-      var(--tg-teal-400),
-      var(--tg-teal-300)
+      var(--progress-from),
+      var(--progress-to)
     );
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
   }
 
+  /* Teal-tinted elevation, per the prototype's quiet shadows. */
   .shadow-soft {
-    box-shadow: 0 1px 2px hsl(var(--shadow-color) / 0.06),
-      0 8px 24px -12px hsl(var(--shadow-color) / 0.18);
+    box-shadow: 0 1px 3px hsl(var(--shadow-color) / 0.06),
+      0 1px 2px hsl(var(--shadow-color) / 0.04);
   }
 
   .shadow-card {
-    box-shadow: 0 1px 2px hsl(var(--shadow-color) / 0.05),
-      0 12px 32px -16px hsl(var(--shadow-color) / 0.22);
+    box-shadow: 0 4px 12px hsl(var(--shadow-color) / 0.08),
+      0 1px 2px hsl(var(--shadow-color) / 0.04);
+  }
+
+  .shadow-float {
+    box-shadow: 0 8px 24px hsl(var(--shadow-color) / 0.12),
+      0 2px 6px hsl(var(--shadow-color) / 0.05);
+  }
+
+  /* Entrance + interaction motion, matching the prototype's timing. */
+  .anim-fade-up {
+    animation: tg-fade-up 0.35s ease both;
+  }
+
+  .anim-pop {
+    animation: tg-pop 0.25s ease both;
+  }
+
+  .hover-lift {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px hsl(var(--shadow-color) / 0.08);
+  }
+
+  .press {
+    transition: transform 0.1s ease;
+  }
+
+  .press:active {
+    transform: scale(0.97);
+  }
+}
+
+@keyframes tg-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes tg-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes tg-bell-ring {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  15% {
+    transform: rotate(12deg);
+  }
+  30% {
+    transform: rotate(-10deg);
+  }
+  45% {
+    transform: rotate(6deg);
+  }
+  60% {
+    transform: rotate(-3deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  html {
+    scroll-behavior: auto;
   }
 }

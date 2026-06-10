@@ -1,4 +1,4 @@
-import { mockJourney } from "./mock-data";
+import { makeMockJourney } from "./mock-data";
 import type { OnboardingJourney } from "./types";
 
 /**
@@ -11,7 +11,7 @@ import type { OnboardingJourney } from "./types";
  */
 export async function getJourney(): Promise<OnboardingJourney> {
   // Later: fetch from Airtable here and map records -> OnboardingJourney.
-  return mockJourney;
+  return makeMockJourney();
 }
 
 /**

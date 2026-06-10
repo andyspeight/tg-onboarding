@@ -1,34 +1,43 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { OnboardingJourney } from "@/lib/onboarding/types";
+import type { OnboardingJourney, TaskStatus } from "@/lib/onboarding/types";
 import {
-  currentPhase,
   overallProgress,
   phaseProgress,
   phasesComplete,
+  workloadStats,
 } from "@/lib/onboarding/progress";
 import { WelcomeHero } from "./WelcomeHero";
+import { QuickStats } from "./QuickStats";
+import { FilterBar, type TaskFilter } from "./FilterBar";
 import { PhaseCard } from "./PhaseCard";
 import { ConfidenceGate } from "./ConfidenceGate";
 
+const CYCLE: Record<TaskStatus, TaskStatus> = {
+  todo: "in-progress",
+  "in-progress": "done",
+  done: "todo",
+};
+
 /**
- * The interactive client portal. Holds the live journey state so checking a
+ * The interactive client portal. Holds the live journey state so cycling a
  * task or rating confidence updates progress immediately. Persistence is out of
  * scope for Phase 1 — this is the swap-in point for Airtable-backed mutations.
  */
 export function Portal({ journey }: { journey: OnboardingJourney }) {
   const [phases, setPhases] = useState(journey.phases);
+  const [filter, setFilter] = useState<TaskFilter>("all");
   const [confidence, setConfidence] = useState<number | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(
-    () => currentPhase(journey.phases)?.id ?? journey.phases[0]?.id ?? null,
-  );
 
   const overall = useMemo(() => overallProgress(phases), [phases]);
   const completeCount = useMemo(() => phasesComplete(phases), [phases]);
-  const active = useMemo(() => currentPhase(phases), [phases]);
+  const stats = useMemo(
+    () => workloadStats(phases, journey.asOf),
+    [phases, journey.asOf],
+  );
 
-  function toggleTask(phaseId: string, taskId: string) {
+  function cycleTask(phaseId: string, taskId: string) {
     setPhases((prev) =>
       prev.map((phase) =>
         phase.id !== phaseId
@@ -36,52 +45,62 @@ export function Portal({ journey }: { journey: OnboardingJourney }) {
           : {
               ...phase,
               tasks: phase.tasks.map((task) =>
-                task.id === taskId ? { ...task, done: !task.done } : task,
+                task.id === taskId
+                  ? { ...task, status: CYCLE[task.status] }
+                  : task,
               ),
             },
       ),
     );
   }
 
-  function toggleExpand(phaseId: string) {
-    setExpandedId((current) => (current === phaseId ? null : phaseId));
-  }
+  // Owner filter, prototype-style: shared tasks show in both views, and a
+  // phase with nothing matching drops out of the list entirely.
+  const visiblePhases = useMemo(() => {
+    if (filter === "all") return phases;
+    return phases
+      .map((phase) => ({
+        ...phase,
+        tasks: phase.tasks.filter((task) =>
+          filter === "client"
+            ? task.owner !== "travelgenix"
+            : task.owner !== "client",
+        ),
+      }))
+      .filter((phase) => phase.tasks.length > 0);
+  }, [phases, filter]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <WelcomeHero
         contactName={journey.client.contactName}
         company={journey.client.company}
+        plan={journey.client.plan}
+        accountManager={journey.client.accountManager}
         overall={overall}
         phasesComplete={completeCount}
         phaseCount={phases.length}
-        currentPhaseTitle={active?.title}
-        currentPhaseHref={active ? `#phase-${active.number}` : undefined}
       />
 
-      <div>
-        <div className="mb-4 flex items-baseline justify-between">
-          <h2 className="text-lg font-semibold tracking-tight text-fg">
-            Your seven-phase journey
-          </h2>
-          <span className="text-sm text-fg-muted">
-            {completeCount}/{phases.length} complete
-          </span>
-        </div>
+      <QuickStats stats={stats} />
 
-        <ol className="space-y-3">
-          {phases.map((phase) => (
-            <li key={phase.id} className="space-y-3">
+      <FilterBar filter={filter} onChange={setFilter} />
+
+      <ol className="space-y-3.5">
+        {visiblePhases.map((phase, index) => {
+          // Mini bars always show true phase progress, not the filtered slice.
+          const fullPhase = phases.find((p) => p.id === phase.id) ?? phase;
+          return (
+            <li key={phase.id} className="space-y-3.5">
               <PhaseCard
                 phase={phase}
-                stats={phaseProgress(phase)}
-                expanded={expandedId === phase.id}
-                onToggleExpand={() => toggleExpand(phase.id)}
-                onToggleTask={(taskId) => toggleTask(phase.id, taskId)}
+                stats={phaseProgress(fullPhase)}
+                asOf={journey.asOf}
+                index={index}
+                onCycleTask={(taskId) => cycleTask(phase.id, taskId)}
               />
-
               {phase.gate && (
-                <div className="pl-0 sm:pl-[3.5rem]">
+                <div className="sm:pl-[2.875rem]">
                   <ConfidenceGate
                     gate={phase.gate}
                     value={confidence}
@@ -90,9 +109,19 @@ export function Portal({ journey }: { journey: OnboardingJourney }) {
                 </div>
               )}
             </li>
-          ))}
-        </ol>
-      </div>
+          );
+        })}
+      </ol>
+
+      {overall.pct === 100 && (
+        <div className="anim-pop rounded-card border border-success-border bg-success-soft p-8 text-center">
+          <p className="text-lg font-bold text-success">You’re all set</p>
+          <p className="mt-1.5 text-sm text-fg-muted">
+            Every task is complete. Welcome to Travelgenix. Let’s make great
+            things happen.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

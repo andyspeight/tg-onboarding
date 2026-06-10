@@ -8,17 +8,38 @@
 
 export type PhaseStatus = "completed" | "active" | "upcoming";
 
-/** Who a task belongs to. Internal tasks never reach the client view. */
+/** Who can SEE a task. Internal tasks never reach the client view. */
 export type TaskAudience = "client" | "internal";
 
+/**
+ * Who DOES a task. Distinct from audience: a Travelgenix-owned task (e.g.
+ * "Build homepage draft") is visible to the client for transparency, while an
+ * internal task is hidden entirely.
+ */
+export type TaskOwner = "client" | "travelgenix" | "both";
+
+/** Tri-state task status, matching the approved prototype's behaviour. */
+export type TaskStatus = "todo" | "in-progress" | "done";
+
 export type TrainingType = "video" | "article";
+
+/** Kinds of portal notification — the surface for task-specific nudges. */
+export type NotificationKind =
+  | "progress"
+  | "reminder"
+  | "complete"
+  | "message"
+  | "welcome";
 
 export interface OnboardingTask {
   id: string;
   title: string;
   description?: string;
   audience: TaskAudience;
-  done: boolean;
+  owner: TaskOwner;
+  status: TaskStatus;
+  /** ISO date (YYYY-MM-DD). Relative labels derive from the journey's asOf. */
+  dueDate?: string;
   /** Nice-to-have rather than required to progress. */
   optional?: boolean;
 }
@@ -62,14 +83,31 @@ export interface JourneyPhase {
 export interface ClientProfile {
   company: string;
   contactName: string;
+  /** Package tier, e.g. "Boost". */
   plan?: string;
   /** ISO date string. */
   onboardingStartedAt?: string;
   /** The Travelgenix human looking after this client. */
-  specialistName?: string;
+  accountManager?: string;
+}
+
+/** A task-specific nudge or update shown in the notification bell. */
+export interface PortalNotification {
+  id: string;
+  kind: NotificationKind;
+  text: string;
+  /** Pre-computed relative label ("2h ago") so render stays deterministic. */
+  whenLabel: string;
+  read: boolean;
 }
 
 export interface OnboardingJourney {
   client: ClientProfile;
+  /**
+   * The date (YYYY-MM-DD) all relative labels are computed against. Comes from
+   * the data layer so server and client render identically.
+   */
+  asOf: string;
   phases: JourneyPhase[];
+  notifications: PortalNotification[];
 }

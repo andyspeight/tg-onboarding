@@ -30,6 +30,6 @@ export async function askLuna(
   // Phase 1 stub. Later: call the Luna AI service from a server route.
   return {
     answer:
-      "Luna, your in-product guide, is coming soon. In the meantime your onboarding specialist is just a message away.",
+      "Luna, your in-product guide, is coming soon. In the meantime your account manager is just a message away.",
   };
 }
