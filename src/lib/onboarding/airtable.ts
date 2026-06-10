@@ -25,6 +25,13 @@ import {
   type TeamTaskUrgency,
 } from "./health";
 import { TASK_TEMPLATE } from "./task-template";
+import { send } from "../email";
+import {
+  milestoneEmail,
+  reminderEmail,
+  welcomeEmail,
+  wiltingAlertEmail,
+} from "../email/templates";
 
 /**
  * Airtable layer for the TG Onboarding base (appOSIsT3wpkTmit9).
@@ -53,6 +60,17 @@ const TABLES = {
   intakeResponses: "tblUN366QbH6fugHP",
   confidenceRatings: "tbl1mfOO84zYhnpYR",
   engagementSignals: "tblUJTgxwcjzGvaRd",
+  automationLog: "tbl6JmGMnuRvHbYuc",
+};
+
+const AUTOMATION_F = {
+  summary: "fldfAexVOdJtehqT6",
+  client: "fldvn9PIQqodIpJRS",
+  event: "fld4xFULyVQRXPPP9",
+  channel: "fldQ0Wp0HuCuPIxj7",
+  recipient: "fldSqA6MUZIR6l64W",
+  dedupeKey: "fldNhDi334loGDh9E",
+  sentAt: "fld46yHYifyYYpQSg",
 };
 
 const CLIENT_F = {
@@ -1299,5 +1317,307 @@ export async function createClientWithJourney(
     },
   ]);
 
+  // Welcome email through the seam (no-op until SendGrid is wired), logged.
+  const firstName = input.contactName.split(" ")[0];
+  const tpl = welcomeEmail(firstName, input.company);
+  const result = await send({
+    to: input.contactEmail,
+    subject: tpl.subject,
+    text: tpl.text,
+    html: tpl.html,
+  });
+  await createRecords(config, TABLES.automationLog, [
+    {
+      [AUTOMATION_F.summary]: `Welcome email to ${input.company}`,
+      [AUTOMATION_F.client]: [clientId],
+      [AUTOMATION_F.event]: "welcome",
+      [AUTOMATION_F.channel]: result.sent ? "email" : "portal",
+      [AUTOMATION_F.recipient]: input.contactEmail,
+      [AUTOMATION_F.dedupeKey]: `welcome:${clientId}`,
+      [AUTOMATION_F.sentAt]: new Date().toISOString(),
+    },
+  ]);
+
   return clientId;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Automation engine — the anti-wilting nudges, milestones and alerts.      */
+/* Runs from the secured daily cron. SendGrid sends are no-ops until wired; */
+/* every action is logged either way so the dashboard shows what happened.  */
+/* ------------------------------------------------------------------------ */
+
+export interface AutomationRunResult {
+  reminders: number;
+  milestones: number;
+  alerts: number;
+  emailsSent: number;
+  skipped: number;
+}
+
+function isoWeek(date: Date): string {
+  const d = new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+  );
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((d.getTime() - yearStart.getTime()) / 86_400_000 + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+export async function runAutomation(): Promise<AutomationRunResult | null> {
+  const config = airtableConfig();
+  if (!config) return null;
+
+  const result: AutomationRunResult = {
+    reminders: 0,
+    milestones: 0,
+    alerts: 0,
+    emailsSent: 0,
+    skipped: 0,
+  };
+
+  // UK working days only — no weekend nudges. (The cron sets the hour.)
+  const ukDay = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
+    weekday: "short",
+  }).format(new Date());
+  if (ukDay === "Sat" || ukDay === "Sun") return result;
+
+  const [clients, phaseRecords, taskRecords, logRecords] = await Promise.all([
+    listAll(config, TABLES.clients),
+    listAll(config, TABLES.phases),
+    listAll(config, TABLES.tasks),
+    listAll(config, TABLES.automationLog),
+  ]);
+
+  const today = ukToday();
+  const nowMs = Date.now();
+  const week = isoWeek(new Date());
+  const phasesSorted = [...phaseRecords].sort(
+    (a, b) => num(a, PHASE_F.number) - num(b, PHASE_F.number),
+  );
+
+  const sentKeys = new Set(
+    logRecords.map((record) => str(record, AUTOMATION_F.dedupeKey)),
+  );
+  // Clients who already had an email today (one-email-per-client-per-day).
+  const emailedToday = new Set(
+    logRecords
+      .filter(
+        (record) =>
+          str(record, AUTOMATION_F.channel) === "email" &&
+          str(record, AUTOMATION_F.sentAt).slice(0, 10) === today,
+      )
+      .map((record) => firstLink(record, AUTOMATION_F.client)),
+  );
+
+  const staffAlertEmail = process.env.STAFF_ALERT_EMAIL;
+  const appBase = process.env.APP_BASE_URL || "https://tg-onboarding-gamma.vercel.app";
+
+  const logRows: Record<string, unknown>[] = [];
+  const notificationRows: Record<string, unknown>[] = [];
+
+  async function emailClient(
+    clientId: string,
+    to: string,
+    tpl: { subject: string; text: string; html: string },
+    event: "reminder" | "milestone",
+    summary: string,
+    dedupeKey: string,
+  ): Promise<void> {
+    // One email per client per day; portal notification still goes out.
+    if (emailedToday.has(clientId)) {
+      result.skipped += 1;
+      return;
+    }
+    const res = await send({ to, subject: tpl.subject, text: tpl.text, html: tpl.html });
+    emailedToday.add(clientId);
+    if (res.sent) result.emailsSent += 1;
+    logRows.push({
+      [AUTOMATION_F.summary]: summary,
+      [AUTOMATION_F.client]: [clientId],
+      [AUTOMATION_F.event]: event,
+      [AUTOMATION_F.channel]: res.sent ? "email" : "portal",
+      [AUTOMATION_F.recipient]: to,
+      [AUTOMATION_F.dedupeKey]: dedupeKey,
+      [AUTOMATION_F.sentAt]: new Date().toISOString(),
+    });
+    sentKeys.add(dedupeKey);
+  }
+
+  for (const clientRecord of clients) {
+    const clientId = clientRecord.id;
+    const email = str(clientRecord, CLIENT_F.email);
+    const firstName = str(clientRecord, CLIENT_F.contactName).split(" ")[0] || "there";
+    const summary = summariseClient(
+      clientRecord,
+      taskRecords,
+      phasesSorted,
+      [],
+      today,
+      nowMs,
+    );
+
+    // 1. Task reminders: client-owed, not done, due in 2 days or 1 day overdue.
+    const clientTasks = taskRecords.filter(
+      (record) =>
+        links(record, TASK_F.client).includes(clientId) &&
+        asAudience(str(record, TASK_F.audience)) === "client" &&
+        asOwner(str(record, TASK_F.owner)) !== "travelgenix" &&
+        asStatus(str(record, TASK_F.status)) !== "done",
+    );
+    for (const task of clientTasks) {
+      const due = str(task, TASK_F.due);
+      if (!due) continue;
+      const diff = daysUntil(due, today);
+      let whenLabel: string | null = null;
+      let bucket = "";
+      if (diff === 2) {
+        whenLabel = "due in 2 days";
+        bucket = "soon";
+      } else if (diff === -1) {
+        whenLabel = "now a day overdue";
+        bucket = "missed";
+      }
+      if (!whenLabel) continue;
+
+      const dedupeKey = `reminder:${task.id}:${bucket}`;
+      if (sentKeys.has(dedupeKey)) continue;
+      sentKeys.add(dedupeKey);
+      result.reminders += 1;
+
+      const title = str(task, TASK_F.title);
+      // In-portal nudge always (anti-wilting rule); references the task.
+      notificationRows.push({
+        [NOTIF_F.text]: `${title} is ${whenLabel}`,
+        [NOTIF_F.client]: [clientId],
+        [NOTIF_F.kind]: "reminder",
+        [NOTIF_F.created]: new Date().toISOString(),
+      });
+      if (email) {
+        await emailClient(
+          clientId,
+          email,
+          reminderEmail(firstName, title, whenLabel),
+          "reminder",
+          `Reminder to ${summary.company}: ${title}`,
+          dedupeKey,
+        );
+      }
+    }
+
+    // 2. Milestones at 50% and 75% (once each).
+    for (const mark of [75, 50]) {
+      if (summary.pct >= mark) {
+        const dedupeKey = `milestone:${mark}:${clientId}`;
+        if (!sentKeys.has(dedupeKey)) {
+          sentKeys.add(dedupeKey);
+          result.milestones += 1;
+          if (email) {
+            await emailClient(
+              clientId,
+              email,
+              milestoneEmail(firstName, mark),
+              "milestone",
+              `${summary.company} reached ${mark}%`,
+              dedupeKey,
+            );
+          }
+        }
+        break; // highest milestone reached is enough for this run
+      }
+    }
+
+    // 3. Wilting alert to staff on amber/red, at most once per week per level.
+    if (summary.health !== "green") {
+      const dedupeKey = `wilting:${clientId}:${summary.health}:${week}`;
+      if (!sentKeys.has(dedupeKey)) {
+        sentKeys.add(dedupeKey);
+        result.alerts += 1;
+        const clientUrl = `${appBase}/admin/clients/${clientId}`;
+        let emailed = false;
+        if (staffAlertEmail) {
+          const manager = str(clientRecord, CLIENT_F.accountManager) || "team";
+          const res = await send({
+            to: staffAlertEmail,
+            ...wiltingAlertEmail(
+              manager,
+              summary.company,
+              summary.contactName,
+              summary.reasons,
+              clientUrl,
+            ),
+          });
+          emailed = res.sent;
+          if (res.sent) result.emailsSent += 1;
+        }
+        logRows.push({
+          [AUTOMATION_F.summary]: `Wilting alert: ${summary.company} (${summary.reasons.join(", ")})`,
+          [AUTOMATION_F.client]: [clientId],
+          [AUTOMATION_F.event]: "wilting-alert",
+          [AUTOMATION_F.channel]: emailed ? "email" : "portal",
+          [AUTOMATION_F.recipient]: staffAlertEmail ?? "(no staff email set)",
+          [AUTOMATION_F.dedupeKey]: dedupeKey,
+          [AUTOMATION_F.sentAt]: new Date().toISOString(),
+        });
+      }
+    }
+  }
+
+  // Persist in batches (max 10 per Airtable call).
+  for (let start = 0; start < notificationRows.length; start += 10) {
+    await createRecords(
+      config,
+      TABLES.notifications,
+      notificationRows.slice(start, start + 10),
+    );
+  }
+  for (let start = 0; start < logRows.length; start += 10) {
+    await createRecords(
+      config,
+      TABLES.automationLog,
+      logRows.slice(start, start + 10),
+    );
+  }
+
+  return result;
+}
+
+export interface AutomationLogEntry {
+  id: string;
+  summary: string;
+  event: string;
+  channel: string;
+  whenLabel: string;
+}
+
+/** Recent automation activity for the dashboard panel. */
+export async function fetchAutomationLog(
+  limit = 12,
+): Promise<AutomationLogEntry[] | null> {
+  const config = airtableConfig();
+  if (!config) return null;
+  try {
+    const records = await listAll(config, TABLES.automationLog);
+    const nowMs = Date.now();
+    return records
+      .sort(
+        (a, b) =>
+          Date.parse(str(b, AUTOMATION_F.sentAt)) -
+          Date.parse(str(a, AUTOMATION_F.sentAt)),
+      )
+      .slice(0, limit)
+      .map((record) => ({
+        id: record.id,
+        summary: str(record, AUTOMATION_F.summary),
+        event: str(record, AUTOMATION_F.event),
+        channel: str(record, AUTOMATION_F.channel),
+        whenLabel: relativeLabel(str(record, AUTOMATION_F.sentAt), nowMs),
+      }));
+  } catch (error) {
+    console.error("[onboarding/airtable] automation log read failed:", error);
+    return null;
+  }
 }

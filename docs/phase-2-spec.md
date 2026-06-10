@@ -61,8 +61,9 @@ Real contextual help through the Phase 1 seam (`src/lib/luna/`): server-side rou
 3. Client detail view
 4. Add client (provisioning + login issuance)
 5. Client auth + multi-tenancy + security interims closed
-6. Automation engine (nudges, milestones, alert emails via SendGrid)
-7. Suppliers admin
+6. Automation engine (nudges, milestones, alert emails via SendGrid) — **shipped 10 Jun**
+   > Daily Vercel Cron (`/api/cron/automation`, 08:00 UTC, secured by `CRON_SECRET`). Reminders 2 days before / 1 day after a due date (in-portal always, email capped one-per-client-per-day), milestone emails at 50%/75%, staff wilting alerts (to `STAFF_ALERT_EMAIL`) at most weekly per level, UK weekdays only. Every action logged to the new Automation Log table (`tbl6JmGMnuRvHbYuc`), which also dedupes sends and powers the dashboard panel. Welcome email fires from the add-client flow. **Env to set when going live: `SENDGRID_API_KEY`, `ONBOARDING_FROM_EMAIL` (verified travelify.io sender), `APP_BASE_URL`, `CRON_SECRET`, `STAFF_ALERT_EMAIL`.** Until `SENDGRID_API_KEY` is set, sends are clean no-ops and still logged.
+7. Suppliers admin — **shipped 10 Jun**
 8. Messaging panel
 9. Luna wiring
 10. Control SSO swap-in (when revived)

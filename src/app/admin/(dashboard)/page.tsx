@@ -1,9 +1,16 @@
 import Link from "next/link";
 import { Overview } from "@/components/admin/Overview";
-import { fetchAdminSnapshot } from "@/lib/onboarding/airtable";
+import { AutomationLog } from "@/components/admin/AutomationLog";
+import {
+  fetchAdminSnapshot,
+  fetchAutomationLog,
+} from "@/lib/onboarding/airtable";
 
 export default async function AdminOverviewPage() {
-  const snapshot = await fetchAdminSnapshot();
+  const [snapshot, automationLog] = await Promise.all([
+    fetchAdminSnapshot(),
+    fetchAutomationLog(),
+  ]);
 
   return (
     <div className="anim-fade-up">
@@ -27,7 +34,10 @@ export default async function AdminOverviewPage() {
 
       <div className="mt-6">
         {snapshot ? (
-          <Overview clients={snapshot.clients} />
+          <div className="space-y-7">
+            <Overview clients={snapshot.clients} />
+            {automationLog && <AutomationLog entries={automationLog} />}
+          </div>
         ) : (
           <div className="rounded-card border border-border bg-surface p-8 text-center shadow-soft">
             <p className="text-[15px] font-bold text-fg">No live data yet</p>
