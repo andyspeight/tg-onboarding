@@ -101,6 +101,42 @@ export interface PortalNotification {
   read: boolean;
 }
 
+export type IntakeFieldType = "text" | "textarea" | "select";
+
+export interface IntakeField {
+  id: string;
+  label: string;
+  type: IntakeFieldType;
+  placeholder?: string;
+  /** For selects. */
+  options?: string[];
+  required?: boolean;
+}
+
+/** One accordion section of the smart intake form. */
+export interface IntakeSection {
+  id: string;
+  title: string;
+  description: string;
+  /** Only shown to these package tiers; omit to show for all tiers. */
+  showForPlans?: string[];
+  fields: IntakeField[];
+}
+
+export type DocumentStatus = "signed" | "available" | "pending";
+
+/** A document in the client's hub, grouped by category. */
+export interface ClientDocument {
+  id: string;
+  name: string;
+  category: string;
+  /** Short type label shown on the chip, e.g. "PDF". */
+  fileType: string;
+  /** ISO date. For `pending` documents this is the expected date. */
+  addedAt: string;
+  status: DocumentStatus;
+}
+
 export interface OnboardingJourney {
   client: ClientProfile;
   /**
@@ -110,4 +146,7 @@ export interface OnboardingJourney {
   asOf: string;
   phases: JourneyPhase[];
   notifications: PortalNotification[];
+  /** Smart intake form definition. Tier filtering happens in the data layer. */
+  intake: IntakeSection[];
+  documents: ClientDocument[];
 }

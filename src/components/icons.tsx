@@ -167,6 +167,15 @@ export function ChatIcon(props: IconProps) {
   );
 }
 
+export function UploadIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 15V4M7 8l5-5 5 5" />
+      <path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" />
+    </svg>
+  );
+}
+
 export function WrenchIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>

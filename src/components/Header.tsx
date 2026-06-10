@@ -1,10 +1,17 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { ClientProfile, PortalNotification } from "@/lib/onboarding/types";
+import { NAV_ITEMS, isActivePath, type NavItem } from "@/components/portal/Sidebar";
 import { NotificationBell } from "./NotificationBell";
 import { ThemeToggle } from "./ThemeToggle";
 
 /**
- * Mobile top bar. On large screens the teal `Sidebar` carries the brand,
- * notifications and theme toggle, so this only renders below `lg`.
+ * Mobile top bar with tab navigation. On large screens the teal `Sidebar`
+ * carries the brand, nav, notifications and theme toggle, so this only
+ * renders below `lg`. Coming-soon sections are left out here: on a small
+ * screen, space goes to what works today.
  */
 export function Header({
   client,
@@ -13,6 +20,11 @@ export function Header({
   client: ClientProfile;
   notifications: PortalNotification[];
 }) {
+  const pathname = usePathname();
+  const liveItems = NAV_ITEMS.filter(
+    (item): item is NavItem & { href: string } => item.href !== null,
+  );
+
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-bg/85 backdrop-blur-md lg:hidden">
       <div className="flex h-14 items-center justify-between px-5">
@@ -31,6 +43,29 @@ export function Header({
           <ThemeToggle />
         </div>
       </div>
+
+      <nav
+        aria-label="Portal sections"
+        className="flex gap-1 overflow-x-auto px-3 pb-2"
+      >
+        {liveItems.map(({ href, label }) => {
+          const active = isActivePath(pathname, href);
+          return (
+            <Link
+              key={label}
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={`inline-flex h-8 shrink-0 items-center rounded-full px-3.5 text-[13px] font-medium transition-colors ${
+                active
+                  ? "bg-accent-soft text-accent"
+                  : "text-fg-muted hover:text-fg"
+              }`}
+            >
+              {label}
+            </Link>
+          );
+        })}
+      </nav>
     </header>
   );
 }

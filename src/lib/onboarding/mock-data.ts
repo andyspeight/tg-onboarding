@@ -1,5 +1,185 @@
-import type { OnboardingJourney } from "./types";
+import type { IntakeSection, OnboardingJourney } from "./types";
 import { shiftDays, ukToday } from "./dates";
+
+/**
+ * The smart intake form, adapted from the approved prototype. The Suppliers
+ * section is tier-conditional: Spark clients don't manage their own supplier
+ * feeds, so they never see it (filtering happens in `data.ts`).
+ */
+const INTAKE_SECTIONS: IntakeSection[] = [
+  {
+    id: "business",
+    title: "Business details",
+    description: "The basics about your travel business.",
+    fields: [
+      {
+        id: "trading-name",
+        label: "Trading name",
+        type: "text",
+        placeholder: "e.g. Wanderlust Travel",
+        required: true,
+      },
+      {
+        id: "legal-name",
+        label: "Legal company name (if different)",
+        type: "text",
+        placeholder: "e.g. Wanderlust Travel Ltd",
+      },
+      {
+        id: "atol",
+        label: "ATOL number (if applicable)",
+        type: "text",
+        placeholder: "e.g. 12345",
+      },
+      {
+        id: "abta",
+        label: "ABTA number (if applicable)",
+        type: "text",
+        placeholder: "e.g. Y1234",
+      },
+      {
+        id: "business-type",
+        label: "What type of business are you?",
+        type: "select",
+        options: [
+          "High street travel agent",
+          "Homeworking travel agent",
+          "Online travel agent",
+          "Tour operator",
+          "Travel consortium",
+          "OTA",
+          "Other",
+        ],
+        required: true,
+      },
+    ],
+  },
+  {
+    id: "branding",
+    title: "Branding & design",
+    description: "Help us match your site to your brand.",
+    fields: [
+      {
+        id: "brand-colour-primary",
+        label: "Your primary brand colour",
+        type: "text",
+        placeholder: "e.g. #2E75B6 or 'navy blue'",
+      },
+      {
+        id: "brand-colour-secondary",
+        label: "Your secondary brand colour",
+        type: "text",
+        placeholder: "e.g. #FF6B35 or 'coral'",
+      },
+      {
+        id: "brand-inspiration",
+        label: "Any websites you love the look of?",
+        type: "textarea",
+        placeholder: "Share links to sites whose style you like...",
+      },
+      {
+        id: "brand-guidelines",
+        label: "Do you have existing brand guidelines?",
+        type: "select",
+        options: [
+          "Yes, I'll upload them in Documents",
+          "No, please suggest something",
+          "Sort of, we have a logo and colours but nothing formal",
+        ],
+      },
+    ],
+  },
+  {
+    id: "suppliers",
+    title: "Suppliers & integrations",
+    description: "Which suppliers do you work with?",
+    showForPlans: ["Boost", "Ignite"],
+    fields: [
+      {
+        id: "suppliers-package",
+        label: "Package holiday suppliers",
+        type: "textarea",
+        placeholder: "e.g. Jet2holidays, TUI, easyJet holidays...",
+      },
+      {
+        id: "suppliers-accommodation",
+        label: "Accommodation suppliers",
+        type: "textarea",
+        placeholder: "e.g. Booking.com, Expedia TAAP, Bedsonline...",
+      },
+      {
+        id: "suppliers-flights",
+        label: "Flight-only suppliers",
+        type: "textarea",
+        placeholder: "e.g. Travelport, Amadeus...",
+      },
+      {
+        id: "suppliers-cruise",
+        label: "Do you need cruise content?",
+        type: "select",
+        options: ["Yes", "No", "Maybe later"],
+      },
+    ],
+  },
+  {
+    id: "content",
+    title: "Content & pages",
+    description: "What should your website include?",
+    fields: [
+      {
+        id: "content-destinations",
+        label: "What destinations do you specialise in?",
+        type: "textarea",
+        placeholder: "e.g. Mediterranean, Caribbean, ski...",
+      },
+      {
+        id: "content-blog",
+        label: "Do you want a blog on your site?",
+        type: "select",
+        options: ["Yes", "No", "Not sure yet"],
+      },
+      {
+        id: "content-pages",
+        label: "Any specific pages you need?",
+        type: "textarea",
+        placeholder: "e.g. Group travel, weddings abroad...",
+      },
+    ],
+  },
+  {
+    id: "domain",
+    title: "Domain & technical",
+    description: "Getting your web address sorted.",
+    fields: [
+      {
+        id: "domain-name",
+        label: "Your domain name",
+        type: "text",
+        placeholder: "e.g. wanderlusttravel.co.uk",
+        required: true,
+      },
+      {
+        id: "domain-owned",
+        label: "Do you already own this domain?",
+        type: "select",
+        options: ["Yes, I own it", "No, I need to buy it", "Not sure"],
+        required: true,
+      },
+      {
+        id: "domain-registrar",
+        label: "Where is it registered?",
+        type: "text",
+        placeholder: "e.g. GoDaddy, 123-reg, Namecheap...",
+      },
+      {
+        id: "domain-email",
+        label: "Do you have email on this domain already?",
+        type: "select",
+        options: ["Yes", "No"],
+      },
+    ],
+  },
+];
 
 /**
  * Seed journey for Phase 1. This stands in for whatever Airtable will return.
@@ -54,6 +234,73 @@ export function makeMockJourney(): OnboardingJourney {
         text: "Welcome to Travelgenix. Your portal is ready.",
         whenLabel: "18d ago",
         read: true,
+      },
+    ],
+    intake: INTAKE_SECTIONS,
+    documents: [
+      {
+        id: "d1",
+        name: "Service agreement (Boost package)",
+        category: "Contracts",
+        fileType: "PDF",
+        addedAt: day(-18),
+        status: "signed",
+      },
+      {
+        id: "d2",
+        name: "Welcome pack",
+        category: "Getting started",
+        fileType: "PDF",
+        addedAt: day(-18),
+        status: "available",
+      },
+      {
+        id: "d3",
+        name: "Brand guidelines template",
+        category: "Getting started",
+        fileType: "DOCX",
+        addedAt: day(-18),
+        status: "available",
+      },
+      {
+        id: "d4",
+        name: "Supplier setup guide: tour operators",
+        category: "Supplier guides",
+        fileType: "PDF",
+        addedAt: day(-18),
+        status: "available",
+      },
+      {
+        id: "d5",
+        name: "Supplier setup guide: accommodation",
+        category: "Supplier guides",
+        fileType: "PDF",
+        addedAt: day(-18),
+        status: "available",
+      },
+      {
+        id: "d6",
+        name: "Domain and DNS setup instructions",
+        category: "Technical",
+        fileType: "PDF",
+        addedAt: day(-6),
+        status: "available",
+      },
+      {
+        id: "d7",
+        name: "Travelgenix University quick start guide",
+        category: "Training",
+        fileType: "PDF",
+        addedAt: day(-18),
+        status: "available",
+      },
+      {
+        id: "d8",
+        name: "Homepage design (v1 draft)",
+        category: "Your site",
+        fileType: "PNG",
+        addedAt: day(3),
+        status: "pending",
       },
     ],
     phases: [
