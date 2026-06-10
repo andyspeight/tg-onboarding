@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Travelgenix Onboarding Portal — Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #F7F8FA; overflow: hidden; }
+  @keyframes fadeInUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes slideIn { from { opacity:0; transform:translateX(-6px); } to { opacity:1; transform:translateX(0); } }
+  @keyframes pulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.15); } }
+  @keyframes popIn { 0% { transform:scale(0.8); opacity:0; } 100% { transform:scale(1); opacity:1; } }
+  @keyframes bellRing { 0%,100% { transform:rotate(0); } 15% { transform:rotate(12deg); } 30% { transform:rotate(-10deg); } 45% { transform:rotate(6deg); } 60% { transform:rotate(-3deg); } }
+  .fade-in { animation: fadeInUp 0.35s ease both; }
+  .slide-in { animation: slideIn 0.3s ease both; }
+  .pop-in { animation: popIn 0.25s ease both; }
+  .hover-lift { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+  .hover-lift:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+  .btn-press { transition: transform 0.1s ease; }
+  .btn-press:active { transform: scale(0.97); }
+  textarea:focus, input:focus, select:focus { border-color: #0D4F4F !important; box-shadow: 0 0 0 3px rgba(13,79,79,0.1) !important; outline: none; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #D0D0D0; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #AAA; }
+  button { font-family: 'Inter', -apple-system, sans-serif; }
+  /* Prototype banner */
+  .proto-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 9999; background: linear-gradient(90deg, #0D4F4F, #17A2B8); color: #fff; text-align: center; padding: 8px 16px; font-size: 12px; font-weight: 600; letter-spacing: 0.3px; }
+  .proto-banner span { opacity: 0.7; font-weight: 400; margin-left: 8px; }
+  #root { margin-top: 34px; height: calc(100vh - 34px); }
+</style>
+</head>
+<body>
+
+<div class="proto-banner">
+  TRAVELGENIX ONBOARDING PORTAL — PROTOTYPE
+  <span>Click through all tabs. Use the Client/Admin toggle (bottom-right) to switch views.</span>
+</div>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+// ── Tokens ──────────────────────────────────────────────────
+const T = {
+  teal:"#0D4F4F", tealLight:"#E8F5F5", tealMid:"#17A2B8",
+  green:"#2E7D32", greenLight:"#E8F5E9", greenBorder:"#C8E6C9",
+  amber:"#F57C00", amberLight:"#FFF8E1", amberBorder:"#FFE082",
+  red:"#D32F2F", redLight:"#FFF5F5", redBorder:"#FFCDD2",
+  blue:"#1565C0", blueLight:"#E3F2FD",
+  orange:"#E65100", orangeLight:"#FFF3E0",
+  text:"#1A1A2E", textSoft:"#555", textMuted:"#999", textFaint:"#BBB",
+  bg:"#F7F8FA", card:"#FFFFFF", border:"#E8ECF0", borderLight:"#F0F2F5",
+  shadow:"0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)",
+  shadowMd:"0 4px 12px rgba(0,0,0,0.08)", shadowLg:"0 8px 24px rgba(0,0,0,0.12)",
+  radius:10, radiusSm:6, radiusXl:16,
+  font:"'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+};
+
+// ── Test Data ───────────────────────────────────────────────
+const TEST_CLIENT = { name:"Sarah Mitchell", company:"Wanderlust Travel", package:"Boost", startDate:"2026-04-10", accountManager:"Andy Speight" };
+
+const INITIAL_PHASES = [
+  { id:"p1", title:"Getting Started", tasks:[
+    { id:"t1", text:"Welcome call completed", owner:"travelgenix", status:"done", dueDate:"2026-04-11" },
+    { id:"t2", text:"Complete your business details form", owner:"client", status:"done", dueDate:"2026-04-14" },
+    { id:"t3", text:"Upload your logo and brand assets", owner:"client", status:"in-progress", dueDate:"2026-04-16" },
+    { id:"t4", text:"Confirm your domain name", owner:"client", status:"todo", dueDate:"2026-04-18" },
+  ]},
+  { id:"p2", title:"Building Your Site", tasks:[
+    { id:"t5", text:"Build homepage draft", owner:"travelgenix", status:"in-progress", dueDate:"2026-04-21" },
+    { id:"t6", text:"Configure search widgets", owner:"travelgenix", status:"todo", dueDate:"2026-04-23" },
+    { id:"t7", text:"Review and approve homepage", owner:"client", status:"todo", dueDate:"2026-04-25" },
+    { id:"t8", text:"Provide content for About Us page", owner:"client", status:"todo", dueDate:"2026-04-25" },
+  ]},
+  { id:"p3", title:"Suppliers & Integrations", tasks:[
+    { id:"t9", text:"Connect supplier feeds", owner:"travelgenix", status:"todo", dueDate:"2026-04-28" },
+    { id:"t10", text:"Provide supplier account credentials", owner:"client", status:"todo", dueDate:"2026-04-28" },
+    { id:"t11", text:"Test booking flow end-to-end", owner:"travelgenix", status:"todo", dueDate:"2026-04-30" },
+  ]},
+  { id:"p4", title:"Training & Go-Live", tasks:[
+    { id:"t12", text:"Complete Travelgenix University core modules", owner:"client", status:"todo", dueDate:"2026-05-02" },
+    { id:"t13", text:"1-to-1 training session", owner:"both", status:"todo", dueDate:"2026-05-05" },
+    { id:"t14", text:"Final review and sign-off", owner:"client", status:"todo", dueDate:"2026-05-07" },
+    { id:"t15", text:"Go live!", owner:"both", status:"todo", dueDate:"2026-05-08" },
+  ]},
+];
+
+const ADMIN_CLIENTS = [
+  { id:"c1", name:"Sarah Mitchell", company:"Wanderlust Travel", package:"Boost", startDate:"2026-04-10", progress:20, lastActive:"2026-04-14", phase:"Getting Started", daysInOnboarding:4, health:"green", detailsComplete:40, tasksOverdue:0 },
+  { id:"c2", name:"James Cooper", company:"Horizon Holidays", package:"Ignite", startDate:"2026-03-25", progress:55, lastActive:"2026-04-12", phase:"Building Your Site", daysInOnboarding:20, health:"amber", detailsComplete:100, tasksOverdue:1 },
+  { id:"c3", name:"Priya Sharma", company:"Spice Route Travel", package:"Spark", startDate:"2026-03-18", progress:75, lastActive:"2026-04-14", phase:"Suppliers & Integrations", daysInOnboarding:27, health:"green", detailsComplete:100, tasksOverdue:0 },
+  { id:"c4", name:"Tom Brennan", company:"Celtic Escapes", package:"Boost", startDate:"2026-03-01", progress:35, lastActive:"2026-04-01", phase:"Building Your Site", daysInOnboarding:44, health:"red", detailsComplete:60, tasksOverdue:4 },
+  { id:"c5", name:"Lisa Chen", company:"East Meets West Travel", package:"Ignite", startDate:"2026-04-07", progress:15, lastActive:"2026-04-13", phase:"Getting Started", daysInOnboarding:7, health:"green", detailsComplete:20, tasksOverdue:0 },
+  { id:"c6", name:"Dave & Karen Price", company:"Sunshine Getaways", package:"Spark", startDate:"2026-02-15", progress:90, lastActive:"2026-04-10", phase:"Training & Go-Live", daysInOnboarding:58, health:"amber", detailsComplete:100, tasksOverdue:2 },
+];
+
+const ADMIN_TASKS = [
+  { id:"at1", text:"Build homepage — Horizon Holidays", client:"Horizon Holidays", dueDate:"2026-04-12", status:"overdue" },
+  { id:"at2", text:"Chase Tom Brennan — no activity 13 days", client:"Celtic Escapes", dueDate:"2026-04-14", status:"urgent" },
+  { id:"at3", text:"Connect Jet2 feed — Spice Route Travel", client:"Spice Route Travel", dueDate:"2026-04-16", status:"upcoming" },
+  { id:"at4", text:"Review homepage — Wanderlust Travel", client:"Wanderlust Travel", dueDate:"2026-04-21", status:"upcoming" },
+  { id:"at5", text:"Schedule training — Sunshine Getaways", client:"Sunshine Getaways", dueDate:"2026-04-15", status:"upcoming" },
+  { id:"at6", text:"Final sign-off — Sunshine Getaways", client:"Sunshine Getaways", dueDate:"2026-04-18", status:"upcoming" },
+  { id:"at7", text:"Configure widgets — East Meets West", client:"East Meets West Travel", dueDate:"2026-04-22", status:"upcoming" },
+];
+
+const TEST_MESSAGES = [
+  { id:"m1", sender:"travelgenix", senderName:"Andy Speight", text:"Hi Sarah! Welcome to Travelgenix. Really excited to get Wanderlust Travel set up for you. I've put together your action plan — have a look through and let me know if anything looks off.", time:"2026-04-10T10:15:00", taskRef:null },
+  { id:"m2", sender:"client", senderName:"Sarah Mitchell", text:"Thanks Andy! This all looks great. Quick question — for the brand colours, can I send you a Pantone reference or do you need hex codes?", time:"2026-04-10T11:32:00", taskRef:null },
+  { id:"m3", sender:"travelgenix", senderName:"Andy Speight", text:"Either works! If you've got Pantone we'll convert it. Pop whatever you have into the Your Details form under Branding & Design and we'll take it from there.", time:"2026-04-10T11:45:00", taskRef:null },
+  { id:"m4", sender:"client", senderName:"Sarah Mitchell", text:"Perfect, done! Also uploaded our logo to the Documents section. It's the one with the compass icon — we've got a few versions but that's our main one.", time:"2026-04-11T09:20:00", taskRef:"t3" },
+  { id:"m5", sender:"travelgenix", senderName:"Andy Speight", text:"Got it, looks great. Love the compass motif — that's going to work really well on the site. I'll start on the homepage draft this week. You should see a preview by the 21st.", time:"2026-04-11T10:05:00", taskRef:"t5" },
+  { id:"m6", sender:"system", senderName:"System", text:"Sarah completed: Complete your business details form ✓", time:"2026-04-14T08:30:00", taskRef:"t2" },
+  { id:"m7", sender:"client", senderName:"Sarah Mitchell", text:"Business details form is done! One thing — we're in the process of switching domain registrars. Should I wait until that's sorted before confirming the domain?", time:"2026-04-14T08:35:00", taskRef:"t4" },
+];
+
+const NOTIFICATIONS = [
+  { id:"n1", text:"Andy started building your homepage", time:"2026-04-14T09:00:00", type:"progress", read:false },
+  { id:"n2", text:"Reminder: Upload your logo and brand assets — due in 2 days", time:"2026-04-14T08:00:00", type:"reminder", read:false },
+  { id:"n3", text:"You completed: Business details form ✓", time:"2026-04-14T08:30:00", type:"complete", read:true },
+  { id:"n4", text:"Andy replied to your message", time:"2026-04-11T10:05:00", type:"message", read:true },
+  { id:"n5", text:"Welcome to Travelgenix! Your portal is ready.", time:"2026-04-10T10:00:00", type:"welcome", read:true },
+];
+
+const AUTOMATION_LOG = [
+  { id:"a1", text:"Auto-reminder sent to Sarah Mitchell — logo upload due in 2 days", time:"2026-04-14T08:00:00", type:"reminder", client:"Wanderlust Travel" },
+  { id:"a2", text:"Wilting alert triggered — Tom Brennan inactive 13 days", time:"2026-04-14T07:00:00", type:"alert", client:"Celtic Escapes" },
+  { id:"a3", text:"Portal auto-created for Lisa Chen (Ignite template)", time:"2026-04-07T09:00:00", type:"creation", client:"East Meets West Travel" },
+  { id:"a4", text:"Auto-reminder sent to Dave Price — training overdue", time:"2026-04-13T08:00:00", type:"reminder", client:"Sunshine Getaways" },
+  { id:"a5", text:"Milestone email sent — Priya Sharma reached 75%", time:"2026-04-12T10:00:00", type:"milestone", client:"Spice Route Travel" },
+  { id:"a6", text:"Auto-chase sent to James Cooper — homepage review overdue", time:"2026-04-13T08:00:00", type:"reminder", client:"Horizon Holidays" },
+  { id:"a7", text:"NPS survey queued — Sunshine Getaways approaching go-live", time:"2026-04-14T07:30:00", type:"survey", client:"Sunshine Getaways" },
+];
+
+const TEST_DOCUMENTS = [
+  { id:"d1", name:"Service Agreement — Boost Package", category:"Contracts", type:"PDF", date:"2026-04-10", status:"signed" },
+  { id:"d2", name:"Welcome Pack", category:"Getting Started", type:"PDF", date:"2026-04-10", status:"available" },
+  { id:"d3", name:"Brand Guidelines Template", category:"Getting Started", type:"DOCX", date:"2026-04-10", status:"available" },
+  { id:"d4", name:"Supplier Setup Guide — Tour Operators", category:"Supplier Guides", type:"PDF", date:"2026-04-10", status:"available" },
+  { id:"d5", name:"Supplier Setup Guide — Accommodation", category:"Supplier Guides", type:"PDF", date:"2026-04-10", status:"available" },
+  { id:"d6", name:"Domain & DNS Setup Instructions", category:"Technical", type:"PDF", date:"2026-04-12", status:"available" },
+  { id:"d7", name:"Travelgenix University — Quick Start Guide", category:"Training", type:"PDF", date:"2026-04-10", status:"available" },
+  { id:"d8", name:"Homepage Design — v1 Draft", category:"Your Site", type:"PNG", date:"2026-04-18", status:"pending" },
+];
+
+const FORM_SECTIONS = [
+  { id:"business", title:"Business Details", description:"The basics about your travel business.", fields:[
+    { id:"f1", label:"Trading name", type:"text", placeholder:"e.g. Wanderlust Travel", required:true },
+    { id:"f2", label:"Legal company name (if different)", type:"text", placeholder:"e.g. Wanderlust Travel Ltd" },
+    { id:"f3", label:"ATOL number (if applicable)", type:"text", placeholder:"e.g. 12345" },
+    { id:"f4", label:"ABTA number (if applicable)", type:"text", placeholder:"e.g. Y1234" },
+    { id:"f5", label:"What type of business are you?", type:"select", options:["Travel Agent — High Street","Travel Agent — Homeworker","Travel Agent — Online Only","Tour Operator","Travel Consortium","OTA","Other"], required:true },
+  ]},
+  { id:"branding", title:"Branding & Design", description:"Help us match your site to your brand.", fields:[
+    { id:"f6", label:"Your primary brand colour", type:"text", placeholder:"e.g. #2E75B6 or 'navy blue'" },
+    { id:"f7", label:"Your secondary brand colour", type:"text", placeholder:"e.g. #FF6B35 or 'coral'" },
+    { id:"f8", label:"Any websites you love the look of?", type:"textarea", placeholder:"Share links to sites whose style you'd like..." },
+    { id:"f9", label:"Do you have existing brand guidelines?", type:"select", options:["Yes — I'll upload them in Documents","No — please suggest something","Sort of — logo and colours but nothing formal"] },
+  ]},
+  { id:"suppliers", title:"Suppliers & Integrations", description:"Which suppliers do you work with?", showFor:["Boost","Ignite"], fields:[
+    { id:"f10", label:"Package holiday suppliers", type:"textarea", placeholder:"e.g. Jet2 Holidays, TUI, easyJet Holidays..." },
+    { id:"f11", label:"Accommodation suppliers", type:"textarea", placeholder:"e.g. Booking.com, Expedia TAAP, Bedsonline..." },
+    { id:"f12", label:"Flight-only suppliers", type:"textarea", placeholder:"e.g. Travelport, Amadeus, Hays Travel..." },
+    { id:"f13", label:"Do you need cruise content?", type:"select", options:["Yes","No","Maybe later"] },
+  ]},
+  { id:"content", title:"Content & Pages", description:"What should your website include?", fields:[
+    { id:"f14", label:"What destinations do you specialise in?", type:"textarea", placeholder:"e.g. Mediterranean, Caribbean, Ski..." },
+    { id:"f15", label:"Do you want a blog on your site?", type:"select", options:["Yes","No","Not sure yet"] },
+    { id:"f16", label:"Any specific pages you need?", type:"textarea", placeholder:"e.g. Group Travel, Weddings Abroad..." },
+  ]},
+  { id:"domain", title:"Domain & Technical", description:"Getting your web address sorted.", fields:[
+    { id:"f17", label:"Your domain name", type:"text", placeholder:"e.g. wanderlusttravel.co.uk", required:true },
+    { id:"f18", label:"Do you already own this domain?", type:"select", options:["Yes — I own it","No — I need to buy it","Not sure"], required:true },
+    { id:"f19", label:"Where is it registered?", type:"text", placeholder:"e.g. GoDaddy, 123-reg, Namecheap..." },
+    { id:"f20", label:"Existing email on this domain?", type:"select", options:["Yes","No"] },
+  ]},
+];
+
+// ── Helpers ─────────────────────────────────────────────────
+function calcProgress(phases) { const all=phases.flatMap(p=>p.tasks); return Math.round((all.filter(t=>t.status==="done").length/all.length)*100); }
+function daysUntil(d) { const diff=Math.ceil((new Date(d)-new Date("2026-04-14"))/86400000); if(diff<0)return"overdue"; if(diff===0)return"today"; if(diff===1)return"tomorrow"; return diff+" days"; }
+function formatDate(d) { return new Date(d).toLocaleDateString("en-GB",{day:"numeric",month:"short"}); }
+function timeAgo(d) { const m=Math.floor((new Date("2026-04-14T10:00:00")-new Date(d))/60000); if(m<60)return m+"m ago"; const h=Math.floor(m/60); if(h<24)return h+"h ago"; return Math.floor(h/24)+"d ago"; }
+
+// ── Shared Components ───────────────────────────────────────
+
+function OwnerBadge({owner}) {
+  const s={client:{bg:T.orangeLight,color:T.orange,label:"You"},travelgenix:{bg:T.greenLight,color:T.green,label:"Travelgenix"},both:{bg:T.blueLight,color:T.blue,label:"Both"}}[owner]||{bg:T.blueLight,color:T.blue,label:"Both"};
+  return <span style={{fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:20,backgroundColor:s.bg,color:s.color}}>{s.label}</span>;
+}
+
+function StatusIcon({status,onClick}) {
+  return <button onClick={onClick} className="btn-press" style={{border:"none",background:"none",cursor:"pointer",padding:0,display:"flex",alignItems:"center"}}>
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+      {status==="done" && <><circle cx="11" cy="11" r="10" fill={T.green} stroke={T.green} strokeWidth="1.5"/><path d="M6.5 11.5L9.5 14.5L15.5 8" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></>}
+      {status==="in-progress" && <><circle cx="11" cy="11" r="10" stroke={T.blue} strokeWidth="1.5" strokeDasharray="4 3"/><circle cx="11" cy="11" r="4" fill={T.blue}/></>}
+      {status==="todo" && <circle cx="11" cy="11" r="10" stroke="#CCC" strokeWidth="1.5"/>}
+    </svg>
+  </button>;
+}
+
+function ProgressBar({percent}) {
+  return <div style={{width:"100%"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
+      <span style={{fontSize:13,color:T.textSoft,fontWeight:500}}>Overall progress</span>
+      <span style={{fontSize:28,fontWeight:800,color:T.teal,letterSpacing:"-1px"}}>{percent}%</span>
+    </div>
+    <div style={{width:"100%",height:10,backgroundColor:T.borderLight,borderRadius:5,overflow:"hidden"}}>
+      <div style={{width:percent+"%",height:"100%",borderRadius:5,background:percent===100?T.green:"linear-gradient(90deg,"+T.teal+","+T.tealMid+")",transition:"width 0.8s cubic-bezier(0.4,0,0.2,1)"}}/>
+    </div>
+  </div>;
+}
+
+// ── Notification Bell ───────────────────────────────────────
+
+function NotificationBell({notifications}) {
+  const [open,setOpen]=useState(false);
+  const [notifs,setNotifs]=useState(notifications);
+  const ref=useRef(null);
+  const unread=notifs.filter(n=>!n.read).length;
+  const icons={progress:"🔨",reminder:"⏰",complete:"✅",message:"💬",welcome:"👋"};
+
+  useEffect(()=>{
+    function h(e){if(ref.current&&!ref.current.contains(e.target))setOpen(false);}
+    document.addEventListener("mousedown",h); return()=>document.removeEventListener("mousedown",h);
+  },[]);
+
+  return <div ref={ref} style={{position:"relative"}}>
+    <button onClick={()=>{setOpen(!open);if(!open&&unread>0)setNotifs(p=>p.map(n=>({...n,read:true})));}} className="btn-press" style={{background:"none",border:"none",cursor:"pointer",padding:6,display:"flex",alignItems:"center",position:"relative"}}>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={unread>0?{animation:"bellRing 0.8s ease"}:{}}>
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+      </svg>
+      {unread>0 && <span style={{position:"absolute",top:2,right:2,width:16,height:16,borderRadius:"50%",backgroundColor:T.red,color:"#fff",fontSize:10,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",animation:"pulse 1.5s ease infinite"}}>{unread}</span>}
+    </button>
+    {open && <div className="pop-in" style={{position:"absolute",top:36,right:0,width:320,backgroundColor:T.card,borderRadius:T.radius,boxShadow:T.shadowLg,border:"1px solid "+T.border,overflow:"hidden",zIndex:100}}>
+      <div style={{padding:"12px 14px",borderBottom:"1px solid "+T.borderLight,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <span style={{fontSize:13,fontWeight:700,color:T.text}}>Notifications</span>
+      </div>
+      <div style={{maxHeight:320,overflowY:"auto"}}>
+        {notifs.map(n=><div key={n.id} style={{padding:"10px 14px",borderBottom:"1px solid "+T.borderLight,backgroundColor:n.read?"transparent":T.tealLight,display:"flex",gap:10,alignItems:"flex-start"}}>
+          <span style={{fontSize:14,flexShrink:0,marginTop:1}}>{icons[n.type]||"📌"}</span>
+          <div style={{flex:1}}><div style={{fontSize:12,color:T.text,lineHeight:1.4}}>{n.text}</div><div style={{fontSize:10,color:T.textFaint,marginTop:3}}>{timeAgo(n.time)}</div></div>
+        </div>)}
+      </div>
+    </div>}
+  </div>;
+}
+
+// ── Sidebar ─────────────────────────────────────────────────
+
+function Sidebar({activeTab,setActiveTab,client}) {
+  const tabs=[
+    {id:"plan",label:"Action Plan",d:"M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"},
+    {id:"details",label:"Your Details",d:"M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"},
+    {id:"docs",label:"Documents",d:"M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6"},
+    {id:"training",label:"Training",d:"M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2zM22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"},
+    {id:"messages",label:"Messages",d:"M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"},
+  ];
+  return <div style={{width:230,background:"linear-gradient(175deg,"+T.teal+" 0%,#0A3D3D 100%)",color:"#fff",display:"flex",flexDirection:"column",flexShrink:0,minHeight:"100%"}}>
+    <div style={{padding:"22px 20px 16px",borderBottom:"1px solid rgba(255,255,255,0.08)",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+      <div>
+        <div style={{fontSize:19,fontWeight:800,letterSpacing:"-0.5px"}}>travelgenix</div>
+        <div style={{fontSize:9,color:"rgba(255,255,255,0.4)",marginTop:3,textTransform:"uppercase",letterSpacing:"2px",fontWeight:600}}>Client Portal</div>
+      </div>
+      <NotificationBell notifications={NOTIFICATIONS}/>
+    </div>
+    <div style={{padding:"16px 20px 14px",borderBottom:"1px solid rgba(255,255,255,0.08)"}}>
+      <div style={{fontSize:14,fontWeight:600,letterSpacing:"-0.2px"}}>{client.company}</div>
+      <div style={{display:"flex",gap:8,alignItems:"center",marginTop:4}}>
+        <span style={{fontSize:10,padding:"2px 8px",borderRadius:20,backgroundColor:"rgba(255,255,255,0.12)",color:"rgba(255,255,255,0.8)",fontWeight:600}}>{client.package}</span>
+        <span style={{fontSize:10,color:"rgba(255,255,255,0.4)"}}>Since {formatDate(client.startDate)}</span>
+      </div>
+    </div>
+    <div style={{padding:"10px 10px",flex:1}}>
+      {tabs.map((tab,i)=><button key={tab.id} onClick={()=>setActiveTab(tab.id)} className="btn-press" style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"11px 14px",border:"none",borderRadius:8,backgroundColor:activeTab===tab.id?"rgba(255,255,255,0.14)":"transparent",color:activeTab===tab.id?"#fff":"rgba(255,255,255,0.6)",cursor:"pointer",fontSize:13,fontWeight:activeTab===tab.id?600:400,marginBottom:2,textAlign:"left",transition:"all 0.15s ease"}}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{opacity:activeTab===tab.id?1:0.6,flexShrink:0}}><path d={tab.d}/></svg>
+        {tab.label}
+      </button>)}
+    </div>
+    <div style={{padding:"14px 20px",borderTop:"1px solid rgba(255,255,255,0.08)",background:"rgba(0,0,0,0.1)"}}>
+      <div style={{fontSize:10,color:"rgba(255,255,255,0.4)",textTransform:"uppercase",letterSpacing:"0.5px",fontWeight:600}}>Your account manager</div>
+      <div style={{fontSize:13,fontWeight:500,marginTop:4,display:"flex",alignItems:"center",gap:8}}>
+        <div style={{width:24,height:24,borderRadius:"50%",backgroundColor:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700}}>A</div>
+        {client.accountManager}
+      </div>
+    </div>
+  </div>;
+}
+
+// ── Action Plan Components ──────────────────────────────────
+
+function TaskRow({task,onCycleStatus}) {
+  const isDone=task.status==="done"; const due=daysUntil(task.dueDate); const isOverdue=due==="overdue"&&!isDone; const isSoon=(due==="today"||due==="tomorrow")&&!isDone;
+  return <div className="slide-in" style={{display:"flex",alignItems:"center",gap:12,padding:"11px 0",borderBottom:"1px solid "+T.borderLight,opacity:isDone?0.5:1,transition:"opacity 0.3s"}}>
+    <StatusIcon status={task.status} onClick={()=>onCycleStatus(task.id)}/>
+    <div style={{flex:1,minWidth:0}}>
+      <div style={{fontSize:13,color:T.text,textDecoration:isDone?"line-through":"none",fontWeight:isDone?400:500}}>{task.text}</div>
+      <div style={{display:"flex",gap:6,alignItems:"center",marginTop:4}}>
+        <OwnerBadge owner={task.owner}/>
+        {isOverdue && <span style={{fontSize:10,color:T.red,fontWeight:600}}>⚠ Overdue</span>}
+        {isSoon&&!isOverdue && <span style={{fontSize:10,color:T.amber,fontWeight:600}}>⏰ Due {due}</span>}
+        {!isOverdue&&!isSoon&&!isDone && <span style={{fontSize:10,color:T.textFaint}}>{formatDate(task.dueDate)} ({due})</span>}
+        {isDone && <span style={{fontSize:10,color:T.textFaint}}>Completed</span>}
+      </div>
+    </div>
+  </div>;
+}
+
+function PhaseCard({phase,onCycleStatus,phaseIndex}) {
+  const done=phase.tasks.filter(t=>t.status==="done").length; const allDone=done===phase.tasks.length; const pct=Math.round((done/phase.tasks.length)*100);
+  const [collapsed,setCollapsed]=useState(allDone);
+  return <div className="hover-lift fade-in" style={{backgroundColor:T.card,borderRadius:T.radius,border:"1px solid "+T.border,marginBottom:14,overflow:"hidden",boxShadow:T.shadow,animationDelay:phaseIndex*80+"ms"}}>
+    <button onClick={()=>setCollapsed(!collapsed)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",border:"none",background:allDone?T.greenLight:T.card,cursor:"pointer",textAlign:"left",transition:"background 0.2s"}}>
+      <div style={{display:"flex",alignItems:"center",gap:12}}>
+        <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:"50%",fontSize:12,fontWeight:700,backgroundColor:allDone?T.green:T.teal,color:"#fff",transition:"background 0.3s"}}>{allDone?"✓":phaseIndex+1}</span>
+        <div>
+          <span style={{fontSize:14,fontWeight:600,color:T.text}}>{phase.title}</span>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginTop:3}}>
+            <div style={{width:60,height:3,backgroundColor:T.borderLight,borderRadius:2,overflow:"hidden"}}><div style={{width:pct+"%",height:"100%",backgroundColor:allDone?T.green:T.teal,borderRadius:2,transition:"width 0.5s"}}/></div>
+            <span style={{fontSize:10,color:T.textMuted}}>{done}/{phase.tasks.length}</span>
+          </div>
+        </div>
+      </div>
+      <span style={{fontSize:11,color:T.textMuted,transform:collapsed?"rotate(-90deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▼</span>
+    </button>
+    {!collapsed && <div style={{padding:"2px 18px 14px"}}>{phase.tasks.map(t=><TaskRow key={t.id} task={t} onCycleStatus={onCycleStatus}/>)}</div>}
+  </div>;
+}
+
+function QuickStats({phases}) {
+  const all=phases.flatMap(p=>p.tasks);
+  const mine=all.filter(t=>(t.owner==="client"||t.owner==="both")&&t.status!=="done").length;
+  const theirs=all.filter(t=>(t.owner==="travelgenix"||t.owner==="both")&&t.status!=="done").length;
+  const overdue=all.filter(t=>t.status!=="done"&&daysUntil(t.dueDate)==="overdue").length;
+  const stats=[{l:"Your tasks remaining",v:mine,c:T.orange},{l:"Our tasks remaining",v:theirs,c:T.green},{l:"Overdue",v:overdue,c:overdue>0?T.red:T.textMuted}];
+  return <div style={{display:"flex",gap:10,marginBottom:24}}>
+    {stats.map((s,i)=><div key={s.l} className="hover-lift fade-in" style={{flex:1,backgroundColor:T.card,borderRadius:T.radius,border:"1px solid "+T.border,padding:"14px 12px",textAlign:"center",boxShadow:T.shadow,animationDelay:i*60+"ms"}}>
+      <div style={{fontSize:28,fontWeight:800,color:s.c,letterSpacing:"-1px"}}>{s.v}</div>
+      <div style={{fontSize:10,color:T.textMuted,marginTop:2,fontWeight:500}}>{s.l}</div>
+    </div>)}
+  </div>;
+}
+
+function FilterBar({filter,setFilter}) {
+  return <div style={{display:"flex",gap:6,marginBottom:18}}>
+    {[{id:"all",l:"All tasks"},{id:"client",l:"Your tasks"},{id:"travelgenix",l:"Our tasks"}].map(f=>
+      <button key={f.id} onClick={()=>setFilter(f.id)} className="btn-press" style={{padding:"6px 16px",border:"1px solid",borderRadius:20,fontSize:12,fontWeight:500,cursor:"pointer",backgroundColor:filter===f.id?T.teal:T.card,color:filter===f.id?"#fff":T.textSoft,borderColor:filter===f.id?T.teal:T.border,transition:"all 0.15s"}}>{f.l}</button>
+    )}
+  </div>;
+}
+
+// ── Documents ───────────────────────────────────────────────
+
+function DocumentHub() {
+  const cats=[...new Set(TEST_DOCUMENTS.map(d=>d.category))];
+  const ss={signed:{bg:T.greenLight,c:T.green,l:"Signed"},available:{bg:T.blueLight,c:T.blue,l:"Download"},pending:{bg:T.orangeLight,c:T.orange,l:"Coming soon"}};
+  const tc={PDF:"#D32F2F",DOCX:"#1565C0",PNG:"#7B1FA2"};
+  return <div className="fade-in">
+    <h1 style={{fontSize:24,fontWeight:800,color:T.text,margin:"0 0 4px",letterSpacing:"-0.5px"}}>Documents</h1>
+    <p style={{fontSize:14,color:T.textSoft,margin:"0 0 24px"}}>Everything you need in one place.</p>
+    <div style={{border:"2px dashed "+T.border,borderRadius:T.radius,padding:24,textAlign:"center",marginBottom:28,backgroundColor:T.borderLight,cursor:"pointer"}}>
+      <div style={{fontSize:28,marginBottom:4}}>📤</div>
+      <div style={{fontSize:13,fontWeight:600,color:T.textSoft}}>Drop files here or click to upload</div>
+      <div style={{fontSize:11,color:T.textMuted,marginTop:3}}>Logo, brand assets, photos — anything we need from you</div>
+    </div>
+    {cats.map(cat=><div key={cat} style={{marginBottom:22}}>
+      <div style={{fontSize:11,fontWeight:700,color:T.textMuted,textTransform:"uppercase",letterSpacing:"1px",marginBottom:8}}>{cat}</div>
+      {TEST_DOCUMENTS.filter(d=>d.category===cat).map(doc=>{const st=ss[doc.status];const col=tc[doc.type]||"#666";return(
+        <div key={doc.id} className="hover-lift" style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",backgroundColor:T.card,borderRadius:T.radiusSm,border:"1px solid "+T.border,marginBottom:6,boxShadow:T.shadow,cursor:doc.status==="available"?"pointer":"default"}}>
+          <div style={{width:38,height:38,borderRadius:T.radiusSm,display:"flex",alignItems:"center",justifyContent:"center",backgroundColor:col+"14",color:col,fontSize:10,fontWeight:700,flexShrink:0}}>{doc.type}</div>
+          <div style={{flex:1}}><div style={{fontSize:13,fontWeight:500,color:T.text}}>{doc.name}</div><div style={{fontSize:10,color:T.textFaint,marginTop:2}}>Added {formatDate(doc.date)}</div></div>
+          <span style={{fontSize:10,fontWeight:600,padding:"3px 10px",borderRadius:20,backgroundColor:st.bg,color:st.c}}>{st.l}</span>
+        </div>
+      );})}
+    </div>)}
+  </div>;
+}
+
+// ── Smart Form ──────────────────────────────────────────────
+
+function SmartForm({clientPackage}) {
+  const [formData,setFormData]=useState({});const [expanded,setExpanded]=useState("business");const [saved,setSaved]=useState({});
+  const sections=FORM_SECTIONS.filter(s=>!s.showFor||s.showFor.includes(clientPackage));
+  const cc=Object.keys(saved).length;
+  const iStyle={width:"100%",padding:"9px 14px",border:"1px solid "+T.border,borderRadius:T.radiusSm,fontSize:13,outline:"none",boxSizing:"border-box",transition:"border-color 0.15s,box-shadow 0.15s",fontFamily:T.font};
+  function save(id){setSaved(p=>({...p,[id]:true}));const i=sections.findIndex(s=>s.id===id);if(i<sections.length-1)setExpanded(sections[i+1].id);}
+
+  return <div className="fade-in">
+    <h1 style={{fontSize:24,fontWeight:800,color:T.text,margin:"0 0 4px",letterSpacing:"-0.5px"}}>Your Details</h1>
+    <p style={{fontSize:14,color:T.textSoft,margin:"0 0 8px"}}>Tell us about your business so we can tailor everything.</p>
+    <div style={{marginBottom:24}}>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:T.textMuted,marginBottom:6}}><span>{cc}/{sections.length} sections</span><span style={{fontWeight:600,color:T.teal}}>{Math.round((cc/sections.length)*100)}%</span></div>
+      <div style={{width:"100%",height:4,backgroundColor:T.borderLight,borderRadius:2,overflow:"hidden"}}><div style={{width:(cc/sections.length)*100+"%",height:"100%",backgroundColor:T.teal,borderRadius:2,transition:"width 0.5s"}}/></div>
+    </div>
+    {sections.map((sec,si)=>{const isExp=expanded===sec.id;const isSaved=saved[sec.id];return(
+      <div key={sec.id} className="fade-in" style={{backgroundColor:T.card,borderRadius:T.radius,border:"1px solid "+T.border,marginBottom:10,overflow:"hidden",boxShadow:T.shadow,animationDelay:si*50+"ms"}}>
+        <button onClick={()=>setExpanded(isExp?null:sec.id)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 18px",border:"none",background:isSaved?T.greenLight:T.card,cursor:"pointer",textAlign:"left",transition:"background 0.2s"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:26,height:26,borderRadius:"50%",fontSize:11,fontWeight:700,backgroundColor:isSaved?T.green:T.border,color:isSaved?"#fff":T.textSoft}}>{isSaved?"✓":si+1}</span>
+            <div><div style={{fontSize:14,fontWeight:600,color:T.text}}>{sec.title}</div><div style={{fontSize:12,color:T.textMuted,marginTop:1}}>{sec.description}</div></div>
+          </div>
+          <span style={{fontSize:11,color:T.textMuted,transform:isExp?"rotate(0)":"rotate(-90deg)",transition:"transform 0.2s"}}>▼</span>
+        </button>
+        {isExp && <div style={{padding:"12px 18px 18px"}}>
+          {sec.fields.map(f=><div key={f.id} style={{marginBottom:14}}>
+            <label style={{display:"block",fontSize:13,fontWeight:500,color:T.text,marginBottom:5}}>{f.label}{f.required&&<span style={{color:T.red}}> *</span>}</label>
+            {f.type==="text"&&<input type="text" placeholder={f.placeholder} value={formData[f.id]||""} onChange={e=>setFormData(p=>({...p,[f.id]:e.target.value}))} style={iStyle}/>}
+            {f.type==="textarea"&&<textarea placeholder={f.placeholder} value={formData[f.id]||""} onChange={e=>setFormData(p=>({...p,[f.id]:e.target.value}))} rows={3} style={{...iStyle,resize:"vertical"}}/>}
+            {f.type==="select"&&<select value={formData[f.id]||""} onChange={e=>setFormData(p=>({...p,[f.id]:e.target.value}))} style={{...iStyle,backgroundColor:"#fff"}}><option value="">Select...</option>{f.options.map(o=><option key={o}>{o}</option>)}</select>}
+          </div>)}
+          <div style={{display:"flex",justifyContent:"flex-end",marginTop:6}}>
+            <button onClick={()=>save(sec.id)} className="btn-press" style={{padding:"9px 24px",borderRadius:T.radiusSm,border:"none",fontSize:13,fontWeight:600,backgroundColor:T.teal,color:"#fff",cursor:"pointer"}}>{isSaved?"Update":"Save & continue"}</button>
+          </div>
+        </div>}
+      </div>
+    );})}
+    {cc===sections.length && <div className="pop-in" style={{textAlign:"center",padding:"28px 20px",backgroundColor:T.greenLight,borderRadius:T.radius,border:"1px solid "+T.greenBorder,marginTop:8}}><div style={{fontSize:28}}>✅</div><div style={{fontSize:16,fontWeight:700,color:T.green,marginTop:6}}>All details submitted</div><div style={{fontSize:13,color:T.textSoft,marginTop:4}}>Thanks! You can update any section anytime.</div></div>}
+  </div>;
+}
+
+// ── Messages ────────────────────────────────────────────────
+
+function MessagesPanel({clientName}) {
+  const [messages,setMessages]=useState(TEST_MESSAGES);const [newMsg,setNewMsg]=useState("");const [filterTask,setFilterTask]=useState("all");
+  const endRef=useRef(null);const allTasks=INITIAL_PHASES.flatMap(p=>p.tasks);
+  const refs=[...new Set(messages.filter(m=>m.taskRef).map(m=>m.taskRef))];
+  const filtered=filterTask==="all"?messages:messages.filter(m=>m.taskRef===filterTask||!m.taskRef);
+  useEffect(()=>{endRef.current?.scrollIntoView({behavior:"smooth"});},[messages]);
+
+  function send(){if(!newMsg.trim())return;setMessages(p=>[...p,{id:"m"+Date.now(),sender:"client",senderName:clientName,text:newMsg.trim(),time:new Date().toISOString(),taskRef:null}]);setNewMsg("");}
+
+  return <div className="fade-in" style={{display:"flex",flexDirection:"column",height:"calc(100vh - 130px)"}}>
+    <div style={{marginBottom:14}}>
+      <h1 style={{fontSize:24,fontWeight:800,color:T.text,margin:"0 0 4px",letterSpacing:"-0.5px"}}>Messages</h1>
+      <p style={{fontSize:14,color:T.textSoft,margin:"0 0 12px"}}>Chat with your account manager. Everything in one place.</p>
+      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+        <button onClick={()=>setFilterTask("all")} className="btn-press" style={{padding:"4px 12px",borderRadius:20,border:"1px solid",fontSize:11,cursor:"pointer",backgroundColor:filterTask==="all"?T.teal:T.card,color:filterTask==="all"?"#fff":T.textSoft,borderColor:filterTask==="all"?T.teal:T.border}}>All</button>
+        {refs.map(tid=>{const task=allTasks.find(t=>t.id===tid);if(!task)return null;return <button key={tid} onClick={()=>setFilterTask(tid)} className="btn-press" style={{padding:"4px 12px",borderRadius:20,border:"1px solid",fontSize:11,cursor:"pointer",backgroundColor:filterTask===tid?T.blue:T.card,color:filterTask===tid?"#fff":T.textSoft,borderColor:filterTask===tid?T.blue:T.border}}>{task.text.length>25?task.text.slice(0,25)+"…":task.text}</button>;})}
+      </div>
+    </div>
+    <div style={{flex:1,overflowY:"auto",padding:"8px 0"}}>
+      {filtered.map(msg=>{const isOwn=msg.sender==="client";const isSys=msg.sender==="system";const taskLabel=msg.taskRef?allTasks.find(t=>t.id===msg.taskRef):null;
+        if(isSys)return <div key={msg.id} className="fade-in" style={{textAlign:"center",padding:"8px 0"}}><span style={{fontSize:11,color:T.green,backgroundColor:T.greenLight,padding:"4px 14px",borderRadius:20,fontWeight:500}}>{msg.text}</span><div style={{fontSize:9,color:T.textFaint,marginTop:3}}>{timeAgo(msg.time)}</div></div>;
+        return <div key={msg.id} className="fade-in" style={{display:"flex",flexDirection:"column",alignItems:isOwn?"flex-end":"flex-start",marginBottom:14}}>
+          {taskLabel&&<span style={{fontSize:10,color:T.blue,backgroundColor:T.blueLight,padding:"2px 8px",borderRadius:20,marginBottom:4,fontWeight:500}}>Re: {taskLabel.text}</span>}
+          <div style={{maxWidth:"78%",padding:"11px 16px",borderRadius:16,backgroundColor:isOwn?T.teal:T.card,color:isOwn?"#fff":T.text,border:isOwn?"none":"1px solid "+T.border,boxShadow:T.shadow,borderBottomRightRadius:isOwn?4:16,borderBottomLeftRadius:isOwn?16:4}}>
+            <div style={{fontSize:13,lineHeight:1.55}}>{msg.text}</div>
+          </div>
+          <div style={{fontSize:10,color:T.textFaint,marginTop:4,display:"flex",gap:6}}><span style={{fontWeight:500,color:T.textMuted}}>{msg.senderName}</span><span>·</span><span>{timeAgo(msg.time)}</span></div>
+        </div>;
+      })}
+      <div ref={endRef}/>
+    </div>
+    <div style={{display:"flex",gap:8,paddingTop:14,borderTop:"1px solid "+T.borderLight}}>
+      <textarea value={newMsg} onChange={e=>setNewMsg(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}} placeholder="Type a message... (Enter to send)" rows={2} style={{flex:1,padding:"10px 14px",border:"1px solid "+T.border,borderRadius:T.radiusSm,fontSize:13,outline:"none",resize:"none",fontFamily:T.font}}/>
+      <button onClick={send} disabled={!newMsg.trim()} className="btn-press" style={{padding:"10px 22px",borderRadius:T.radiusSm,border:"none",fontSize:13,fontWeight:600,backgroundColor:newMsg.trim()?T.teal:T.border,color:newMsg.trim()?"#fff":T.textMuted,cursor:newMsg.trim()?"pointer":"default",alignSelf:"flex-end"}}>Send</button>
+    </div>
+  </div>;
+}
+
+// ── Admin Dashboard ─────────────────────────────────────────
+
+function HealthDot({health}) {
+  const c={green:T.green,amber:T.amber,red:T.red}[health]||T.textMuted;
+  return <span style={{display:"inline-block",width:10,height:10,borderRadius:"50%",backgroundColor:c,flexShrink:0,boxShadow:"0 0 0 2px "+c+"33"}}/>;
+}
+
+function AdminDashboard() {
+  const [cf,setCf]=useState("all");const [tf,setTf]=useState("all");const [showAuto,setShowAuto]=useState(false);
+  const fc=cf==="all"?ADMIN_CLIENTS:ADMIN_CLIENTS.filter(c=>c.health===cf);
+  const ft=tf==="all"?ADMIN_TASKS:ADMIN_TASKS.filter(t=>t.status===tf);
+  const avg=Math.round(ADMIN_CLIENTS.reduce((s,c)=>s+c.progress,0)/ADMIN_CLIENTS.length);
+  const atRisk=ADMIN_CLIENTS.filter(c=>c.health!=="green").length;
+  const totalOD=ADMIN_CLIENTS.reduce((s,c)=>s+c.tasksOverdue,0);
+  const alerts=ADMIN_CLIENTS.filter(c=>c.health!=="green").sort((a,b)=>a.health==="red"?-1:1).map(c=>{const ds=Math.ceil((new Date("2026-04-14")-new Date(c.lastActive))/86400000);return{...c,ds,msg:c.health==="red"?`No activity for ${ds} days. ${c.tasksOverdue} overdue tasks.`:c.tasksOverdue>0?`${c.tasksOverdue} overdue tasks. Last active ${ds}d ago.`:`Day ${c.daysInOnboarding}, only ${c.progress}% complete.`};});
+  const sty={overdue:{bg:T.redLight,c:T.red,l:"Overdue"},urgent:{bg:T.orangeLight,c:T.orange,l:"Urgent"},upcoming:{bg:T.blueLight,c:T.blue,l:"Upcoming"}};
+  const ai={reminder:"⏰",alert:"⚠️",creation:"🚀",milestone:"🎯",survey:"📊"};
+
+  return <div style={{minHeight:"100vh",backgroundColor:T.bg,fontFamily:T.font}}>
+    <div style={{background:"linear-gradient(90deg,"+T.teal+",#0A3D3D)",padding:"16px 32px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <div><div style={{fontSize:19,fontWeight:800,color:"#fff",letterSpacing:"-0.5px"}}>travelgenix</div><div style={{fontSize:9,color:"rgba(255,255,255,0.4)",textTransform:"uppercase",letterSpacing:"2px",fontWeight:600}}>Onboarding Dashboard</div></div>
+      <div style={{display:"flex",alignItems:"center",gap:16}}>
+        <button onClick={()=>setShowAuto(!showAuto)} className="btn-press" style={{padding:"6px 14px",borderRadius:20,border:"1px solid rgba(255,255,255,0.2)",fontSize:11,fontWeight:600,cursor:"pointer",backgroundColor:showAuto?"rgba(255,255,255,0.15)":"transparent",color:"rgba(255,255,255,0.8)"}}>⚡ Automation Log</button>
+        <div style={{fontSize:13,color:"rgba(255,255,255,0.7)"}}>Andy Speight</div>
+      </div>
+    </div>
+    <div style={{padding:"28px 32px",maxWidth:1000,margin:"0 auto"}}>
+      <h1 className="fade-in" style={{fontSize:24,fontWeight:800,color:T.text,margin:"0 0 4px",letterSpacing:"-0.5px"}}>Good morning, Andy 👋</h1>
+      <p className="fade-in" style={{fontSize:14,color:T.textSoft,margin:"0 0 24px"}}>Your onboarding overview for today.</p>
+
+      <div style={{display:"flex",gap:12,marginBottom:24}}>
+        {[{l:"Active onboardings",v:ADMIN_CLIENTS.length,c:T.teal},{l:"Avg. progress",v:avg+"%",c:T.blue},{l:"At risk",v:atRisk,c:atRisk>0?T.amber:T.textMuted},{l:"Overdue tasks",v:totalOD,c:totalOD>0?T.red:T.textMuted}].map((card,i)=>
+          <div key={card.l} className="hover-lift fade-in" style={{flex:1,backgroundColor:T.card,borderRadius:T.radius,border:"1px solid "+T.border,padding:16,textAlign:"center",boxShadow:T.shadow,animationDelay:i*60+"ms"}}>
+            <div style={{fontSize:30,fontWeight:800,color:card.c,letterSpacing:"-1px"}}>{card.v}</div>
+            <div style={{fontSize:10,color:T.textMuted,marginTop:2,fontWeight:500}}>{card.l}</div>
+          </div>
+        )}
+      </div>
+
+      {showAuto && <div className="fade-in" style={{marginBottom:24,backgroundColor:T.card,borderRadius:T.radius,border:"1px solid "+T.border,boxShadow:T.shadow,overflow:"hidden"}}>
+        <div style={{padding:"14px 18px",borderBottom:"1px solid "+T.borderLight,display:"flex",justifyContent:"space-between"}}><div style={{fontSize:14,fontWeight:700,color:T.text}}>⚡ Automation Log</div><span style={{fontSize:11,color:T.textMuted}}>Last 7 days</span></div>
+        {AUTOMATION_LOG.map(a=><div key={a.id} style={{padding:"10px 18px",borderBottom:"1px solid "+T.borderLight,display:"flex",gap:10,alignItems:"center"}}>
+          <span style={{fontSize:14,flexShrink:0}}>{ai[a.type]||"⚙️"}</span>
+          <div style={{flex:1}}><div style={{fontSize:12,color:T.text}}>{a.text}</div><div style={{fontSize:10,color:T.textFaint,marginTop:2}}>{a.client} · {timeAgo(a.time)}</div></div>
+        </div>)}
+      </div>}
+
+      {alerts.length>0 && <div className="fade-in" style={{marginBottom:24}}>
+        <div style={{fontSize:14,fontWeight:700,color:T.text,marginBottom:10}}>⚠️ Wilting Alerts</div>
+        {alerts.map(a=><div key={a.id} className="hover-lift" style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",backgroundColor:a.health==="red"?T.redLight:T.amberLight,borderRadius:T.radius,border:"1px solid "+(a.health==="red"?T.redBorder:T.amberBorder),marginBottom:8,boxShadow:T.shadow}}>
+          <HealthDot health={a.health}/>
+          <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:T.text}}>{a.company} <span style={{fontWeight:400,color:T.textMuted}}>({a.name})</span></div><div style={{fontSize:12,color:T.textSoft,marginTop:2}}>{a.msg}</div></div>
+          <button className="btn-press" style={{padding:"6px 14px",borderRadius:T.radiusSm,border:"1px solid "+T.border,fontSize:11,fontWeight:600,backgroundColor:T.card,cursor:"pointer",color:T.text}}>View</button>
+        </div>)}
+      </div>}
+
+      <div style={{marginBottom:28}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <div style={{fontSize:14,fontWeight:700,color:T.text}}>All Clients</div>
+          <div style={{display:"flex",gap:4}}>
+            {[{id:"all",l:"All"},{id:"green",l:"On track"},{id:"amber",l:"Slowing"},{id:"red",l:"At risk"}].map(f=><button key={f.id} onClick={()=>setCf(f.id)} className="btn-press" style={{padding:"4px 12px",borderRadius:20,border:"1px solid",fontSize:11,cursor:"pointer",backgroundColor:cf===f.id?T.teal:T.card,color:cf===f.id?"#fff":T.textSoft,borderColor:cf===f.id?T.teal:T.border}}>{f.l}</button>)}
+          </div>
+        </div>
+        <div style={{display:"flex",padding:"6px 16px",fontSize:9,color:T.textMuted,textTransform:"uppercase",letterSpacing:"0.8px",fontWeight:700,gap:12}}>
+          <div style={{width:10}}/><div style={{flex:1}}>Client</div><div style={{width:72,textAlign:"center"}}>Progress</div><div style={{width:80,textAlign:"center"}}>Phase</div><div style={{width:50,textAlign:"center"}}>Form</div><div style={{width:52}}/>
+        </div>
+        {fc.map((c,i)=>{const pc=c.progress>=75?T.green:c.progress>=40?T.blue:T.textSoft;return(
+          <div key={c.id} className="hover-lift fade-in" style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",backgroundColor:T.card,borderRadius:T.radiusSm,border:"1px solid "+T.border,marginBottom:5,boxShadow:T.shadow,animationDelay:i*40+"ms"}}>
+            <HealthDot health={c.health}/>
+            <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:T.text}}>{c.company}</div><div style={{fontSize:11,color:T.textMuted,marginTop:1}}>{c.name} · {c.package}</div></div>
+            <div style={{width:72,textAlign:"center"}}><div style={{fontSize:13,fontWeight:700,color:pc}}>{c.progress}%</div><div style={{width:48,height:3,backgroundColor:T.borderLight,borderRadius:2,margin:"3px auto 0",overflow:"hidden"}}><div style={{width:c.progress+"%",height:"100%",backgroundColor:pc,borderRadius:2}}/></div></div>
+            <div style={{width:80,textAlign:"center"}}><div style={{fontSize:11,color:T.textSoft}}>{c.phase.split(" & ")[0]}</div><div style={{fontSize:10,color:T.textFaint}}>Day {c.daysInOnboarding}</div></div>
+            <div style={{width:50,textAlign:"center",fontSize:12,color:T.textSoft}}>{c.detailsComplete}%</div>
+            <button className="btn-press" style={{padding:"5px 14px",borderRadius:T.radiusSm,border:"1px solid "+T.border,fontSize:11,fontWeight:500,backgroundColor:T.card,cursor:"pointer",color:T.text}}>Open</button>
+          </div>
+        );})}
+      </div>
+
+      <div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <div style={{fontSize:14,fontWeight:700,color:T.text}}>Your Team Tasks</div>
+          <div style={{display:"flex",gap:4}}>
+            {[{id:"all",l:"All"},{id:"overdue",l:"Overdue"},{id:"urgent",l:"Urgent"},{id:"upcoming",l:"Upcoming"}].map(f=><button key={f.id} onClick={()=>setTf(f.id)} className="btn-press" style={{padding:"4px 12px",borderRadius:20,border:"1px solid",fontSize:11,cursor:"pointer",backgroundColor:tf===f.id?T.teal:T.card,color:tf===f.id?"#fff":T.textSoft,borderColor:tf===f.id?T.teal:T.border}}>{f.l}</button>)}
+          </div>
+        </div>
+        {ft.map((t,i)=>{const s=sty[t.status]||sty.upcoming;return(
+          <div key={t.id} className="hover-lift fade-in" style={{display:"flex",alignItems:"center",gap:10,padding:"11px 16px",backgroundColor:T.card,borderRadius:T.radiusSm,border:"1px solid "+T.border,marginBottom:5,boxShadow:T.shadow,animationDelay:i*30+"ms"}}>
+            <div style={{flex:1}}><div style={{fontSize:13,color:T.text}}>{t.text}</div><div style={{fontSize:10,color:T.textFaint,marginTop:2}}>Due {formatDate(t.dueDate)}</div></div>
+            <span style={{fontSize:10,fontWeight:600,padding:"3px 10px",borderRadius:20,backgroundColor:s.bg,color:s.c}}>{s.l}</span>
+          </div>
+        );})}
+        {ft.length===0&&<div className="fade-in" style={{textAlign:"center",padding:24,color:T.textMuted,fontSize:13}}>No tasks match this filter.</div>}
+      </div>
+    </div>
+  </div>;
+}
+
+// ── Main App ────────────────────────────────────────────────
+
+function App() {
+  const [viewMode,setViewMode]=useState("client");
+  const [phases,setPhases]=useState(INITIAL_PHASES);
+  const [activeTab,setActiveTab]=useState("plan");
+  const [filter,setFilter]=useState("all");
+  const progress=calcProgress(phases);
+
+  function cycleStatus(id){setPhases(p=>p.map(ph=>({...ph,tasks:ph.tasks.map(t=>t.id!==id?t:{...t,status:t.status==="todo"?"in-progress":t.status==="in-progress"?"done":"todo"})})));}
+
+  const fp=phases.map(ph=>({...ph,tasks:ph.tasks.filter(t=>filter==="all"||(filter==="client"?(t.owner==="client"||t.owner==="both"):(t.owner==="travelgenix"||t.owner==="both")))})).filter(p=>p.tasks.length>0);
+
+  const togStyle={position:"fixed",bottom:20,right:20,zIndex:999,display:"flex",borderRadius:10,overflow:"hidden",boxShadow:T.shadowLg,border:"1px solid "+T.border};
+  const togBtn=(m)=>({padding:"9px 18px",border:"none",fontSize:12,fontWeight:600,cursor:"pointer",backgroundColor:viewMode===m?T.teal:T.card,color:viewMode===m?"#fff":T.textSoft,transition:"all 0.15s"});
+
+  if(viewMode==="admin") return <div>
+    <AdminDashboard/>
+    <div style={togStyle}><button style={togBtn("client")} onClick={()=>setViewMode("client")} className="btn-press">Client View</button><button style={togBtn("admin")} onClick={()=>setViewMode("admin")} className="btn-press">Admin View</button></div>
+  </div>;
+
+  return <div style={{position:"relative"}}>
+    <div style={{display:"flex",height:"100%",minHeight:"calc(100vh - 34px)",fontFamily:T.font,backgroundColor:T.bg}}>
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} client={TEST_CLIENT}/>
+      <div style={{flex:1,overflow:"auto",padding:"28px 36px"}}>
+        <div style={{maxWidth:700,margin:"0 auto"}}>
+          {activeTab==="plan"&&<>
+            <div className="fade-in" style={{marginBottom:28}}>
+              <h1 style={{fontSize:24,fontWeight:800,color:T.text,margin:0,letterSpacing:"-0.5px"}}>Good morning, {TEST_CLIENT.name.split(" ")[0]} 👋</h1>
+              <p style={{fontSize:14,color:T.textSoft,margin:"6px 0 20px",lineHeight:1.5}}>Here's where things stand with your <strong>{TEST_CLIENT.company}</strong> setup.</p>
+              <ProgressBar percent={progress}/>
+            </div>
+            <QuickStats phases={phases}/>
+            <FilterBar filter={filter} setFilter={setFilter}/>
+            {fp.map((ph,i)=><PhaseCard key={ph.id} phase={ph} phaseIndex={phases.findIndex(p=>p.id===ph.id)} onCycleStatus={cycleStatus}/>)}
+            {progress===100&&<div className="pop-in" style={{textAlign:"center",padding:"36px 20px",backgroundColor:T.greenLight,borderRadius:T.radiusXl,border:"1px solid "+T.greenBorder,marginTop:12}}><div style={{fontSize:44,marginBottom:10}}>🎉</div><div style={{fontSize:20,fontWeight:800,color:T.green}}>You're all set!</div><div style={{fontSize:14,color:T.textSoft,marginTop:6}}>Every task is complete. Welcome to Travelgenix — let's make great things happen.</div></div>}
+          </>}
+          {activeTab==="details"&&<SmartForm clientPackage={TEST_CLIENT.package}/>}
+          {activeTab==="docs"&&<DocumentHub/>}
+          {activeTab==="training"&&<div className="fade-in" style={{padding:48,textAlign:"center",color:T.textMuted}}><div style={{fontSize:40,marginBottom:12}}>🎓</div><h2 style={{fontSize:18,fontWeight:600,color:T.textSoft,margin:"0 0 8px"}}>Training</h2><p style={{fontSize:14,lineHeight:1.5}}>Travelgenix University modules will be embedded here, contextually linked to your action plan steps.</p></div>}
+          {activeTab==="messages"&&<MessagesPanel clientName={TEST_CLIENT.name}/>}
+        </div>
+      </div>
+    </div>
+    <div style={togStyle}><button style={togBtn("client")} onClick={()=>setViewMode("client")} className="btn-press">Client View</button><button style={togBtn("admin")} onClick={()=>setViewMode("admin")} className="btn-press">Admin View</button></div>
+  </div>;
+}
+
+ReactDOM.render(<App/>, document.getElementById("root"));
+</script>
+</body>
+</html>
