@@ -19,7 +19,9 @@ import {
   type AdminClientDetail,
   type AdminClientSummary,
   type AdminSnapshot,
+  type AdminSupplier,
   type AdminTeamTask,
+  type SupplierCategory,
   type TeamTaskUrgency,
 } from "./health";
 import { TASK_TEMPLATE } from "./task-template";
@@ -1138,6 +1140,71 @@ export async function fetchAdminClientDetail(
     console.error("[onboarding/airtable] client detail failed:", error);
     return null;
   }
+}
+
+const SUPPLIER_CATEGORIES: SupplierCategory[] = [
+  "Package holidays",
+  "Accommodation",
+  "Flights",
+];
+
+function asSupplierCategory(value: string): SupplierCategory {
+  return SUPPLIER_CATEGORIES.includes(value as SupplierCategory)
+    ? (value as SupplierCategory)
+    : "Package holidays";
+}
+
+/** Every supplier (active and inactive) for the admin curation screen. */
+export async function fetchAdminSuppliers(): Promise<AdminSupplier[] | null> {
+  const config = airtableConfig();
+  if (!config) return null;
+
+  try {
+    const records = await listAll(config, TABLES.suppliers);
+    return records
+      .map((record) => ({
+        id: record.id,
+        name: str(record, SUPPLIER_F.name),
+        category: asSupplierCategory(str(record, SUPPLIER_F.category)),
+        active: bool(record, SUPPLIER_F.active),
+      }))
+      .sort(
+        (a, b) =>
+          a.category.localeCompare(b.category) || a.name.localeCompare(b.name),
+      );
+  } catch (error) {
+    console.error("[onboarding/airtable] suppliers read failed:", error);
+    return null;
+  }
+}
+
+/** Add a supplier. New ones are active so they show in the intake at once. */
+export async function createSupplier(
+  config: AirtableConfig,
+  name: string,
+  category: SupplierCategory,
+): Promise<void> {
+  await createRecords(config, TABLES.suppliers, [
+    {
+      [SUPPLIER_F.name]: name,
+      [SUPPLIER_F.category]: category,
+      [SUPPLIER_F.active]: true,
+    },
+  ]);
+}
+
+/** Show or hide a supplier in the intake without deleting it. */
+export async function setSupplierActive(
+  config: AirtableConfig,
+  supplierId: string,
+  active: boolean,
+): Promise<boolean> {
+  const record = await getRecord(config, TABLES.suppliers, supplierId);
+  if (!record) return false;
+  await updateRecord(config, TABLES.suppliers, supplierId, {
+    [SUPPLIER_F.active]: active,
+  });
+  return true;
 }
 
 export interface NewClientInput {

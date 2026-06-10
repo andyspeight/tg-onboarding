@@ -166,3 +166,15 @@ export interface AdminClientDetail {
   intake: AdminDetailIntakeSection[];
   training: AdminDetailTraining[];
 }
+
+export type SupplierCategory =
+  | "Package holidays"
+  | "Accommodation"
+  | "Flights";
+
+export interface AdminSupplier {
+  id: string;
+  name: string;
+  category: SupplierCategory;
+  active: boolean;
+}

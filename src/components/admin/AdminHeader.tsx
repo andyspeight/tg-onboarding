@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const NAV = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/team-tasks", label: "Team tasks" },
+  { href: "/admin/suppliers", label: "Suppliers" },
 ];
 
 /** Top strip of the internal dashboard, per the prototype's admin header. */
