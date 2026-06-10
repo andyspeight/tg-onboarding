@@ -1,21 +1,23 @@
 import { cache } from "react";
+import { fetchJourneyFromAirtable } from "./airtable";
 import { makeMockJourney } from "./mock-data";
 import type { OnboardingJourney } from "./types";
 
 /**
- * THE SWAP POINT.
+ * THE SWAP POINT — now live.
  *
- * Phase 1 reads the journey from local mock data. When the Airtable base is
- * decided, this is the one file that changes: replace the body of `getJourney`
- * with an Airtable read (server-side, env-keyed) that returns the same shape.
- * Nothing else in the app should reach for data directly.
+ * The journey reads from the TG Onboarding Airtable base when the env is
+ * configured (AIRTABLE_PAT + AIRTABLE_BASE_ID, server-side only), and falls
+ * back to local mock data otherwise — so dev without credentials and any
+ * Airtable outage both keep the portal rendering. Nothing else in the app
+ * reaches for data directly.
  *
  * `cache` dedupes the read within a request, so the layout and the page see
  * the same journey (and the same asOf) on a single render pass.
  */
 export const getJourney = cache(async (): Promise<OnboardingJourney> => {
-  // Later: fetch from Airtable here and map records -> OnboardingJourney.
-  return makeMockJourney();
+  const live = await fetchJourneyFromAirtable();
+  return live ?? makeMockJourney();
 });
 
 /**

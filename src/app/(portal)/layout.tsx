@@ -3,6 +3,10 @@ import { LunaButton } from "@/components/LunaButton";
 import { Sidebar } from "@/components/portal/Sidebar";
 import { getClientJourney } from "@/lib/onboarding/data";
 
+// Refresh from Airtable at most once a minute: fresh enough for a portal,
+// and keeps us well inside Airtable's per-base rate limit.
+export const revalidate = 60;
+
 /**
  * The portal shell: teal sidebar (desktop) or top bar + tab nav (mobile),
  * shared across every portal section. Pages render into the content column.
@@ -25,7 +29,10 @@ export default async function PortalLayout({
 
         <footer className="mx-auto w-full max-w-5xl px-6 pb-24 sm:px-10">
           <p className="border-t border-border pt-5 text-center text-xs text-fg-faint">
-            Travelgenix client onboarding · Phase 1 preview · running on mock data
+            Travelgenix client onboarding · Phase 1 preview ·{" "}
+            {journey.source === "airtable"
+              ? "live Airtable data"
+              : "running on mock data"}
           </p>
         </footer>
       </div>

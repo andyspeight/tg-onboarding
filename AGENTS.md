@@ -42,7 +42,7 @@ Out of scope for Phase 1: the internal staff dashboard, real engagement-alert au
 
 ## Stack & architecture
 - **Next.js** app (App Router, TypeScript, Tailwind v4 — note the managed rules block above: this is Next 16 with breaking changes; read `node_modules/next/dist/docs/` before writing Next code). Deployed on **Vercel** (team: agendasgroup).
-- **Airtable** as the backend/data store, in the same lightweight pattern as **Luna Marketing**. Base: **TG Onboarding** `appOSIsT3wpkTmit9` (decided + schema built 10 Jun 2026 — full table/field map in `.claude/skills/airtable-operations/SKILL.md`). The portal still reads local mock data behind `src/lib/onboarding/data.ts` until the scoped PAT lands in env; the swap is that one file.
+- **Airtable** as the backend/data store, in the same lightweight pattern as **Luna Marketing**. Base: **TG Onboarding** `appOSIsT3wpkTmit9` (full table/field map in `.claude/skills/airtable-operations/SKILL.md`). The portal **reads live** from the base via `src/lib/onboarding/airtable.ts` (server-only, env-keyed `AIRTABLE_PAT` + `AIRTABLE_BASE_ID`, ISR 60s, mock fallback when env/Airtable is unavailable). Writes (task ticks, intake, confidence, engagement) still need validated API routes — next.
 - **Luna AI** as the contextual help layer — integration seam at `src/lib/luna/`.
 - Brand: Inter, light + dark. Tokens in `src/app/globals.css` follow the approved prototype's palette (deep teal `#0D4F4F`, bright accent `#17A2B8` — see `reference/onboarding-prototype.html`); tune against the real Travelgenix brand tokens when available.
 

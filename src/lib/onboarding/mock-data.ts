@@ -42,9 +42,11 @@ const FLIGHT_SUPPLIERS = [
 /**
  * The smart intake form, adapted from the approved prototype. The Suppliers
  * section is tier-conditional: Spark clients don't manage their own supplier
- * feeds, so they never see it (filtering happens in `data.ts`).
+ * feeds, so they never see it (filtering happens in `data.ts`). When Airtable
+ * is connected, the supplier multi-select options are replaced by the live
+ * Suppliers table; these lists are the offline fallback.
  */
-const INTAKE_SECTIONS: IntakeSection[] = [
+export const INTAKE_SECTIONS: IntakeSection[] = [
   {
     id: "business",
     title: "Business details",
@@ -258,6 +260,7 @@ export function makeMockJourney(): OnboardingJourney {
   const day = (offset: number) => shiftDays(asOf, offset);
 
   return {
+    source: "mock",
     asOf,
     client: {
       company: "Wanderlust Travel",

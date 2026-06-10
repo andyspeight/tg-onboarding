@@ -149,6 +149,8 @@ export interface ClientDocument {
 }
 
 export interface OnboardingJourney {
+  /** Where this journey came from — drives the footer note. */
+  source: "airtable" | "mock";
   client: ClientProfile;
   /**
    * The date (YYYY-MM-DD) all relative labels are computed against. Comes from
