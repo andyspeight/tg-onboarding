@@ -6,8 +6,13 @@
 The staff-facing half of the product: see every onboarding client's health at a glance, catch wilting before it becomes churn, automate the task-specific nudges, and run client setup end to end — while closing the Phase 1 security interims so real client data can come aboard.
 
 ## Decisions carried in (locked)
-- **Staff access** uses the existing Travelgenix Control SSO. **[Andy: share how it's integrated — repo, docs or endpoint — before slice 1.]**
-- **Clients do not go on SSO.** Staff create client logins from the dashboard and issue a password (simple credential login for the portal).
+- **Staff access** uses the existing Travelgenix Control SSO by **introspection** (see `docs/integrations/sso-travelgenix-control.md`): a thin auth client forwards the `tg_session` cookie to `SSO_INTROSPECT_URL` (`/api/auth/me`), caches ~30s, fails closed, and reads the staff role from `permissions` for the `onboarding` product slug. No JWT secrets here, no new auth providers, `/api/auth/me` never modified.
+- **Slice 1 prerequisites** (before the staff gate can work):
+  1. This project gets a `*.travelify.io` subdomain so the cookie reaches it — **proposed: `onboarding.travelify.io`** [Andy to bless].
+  2. The `onboarding` product row + role set registered in the Control base (`appAYzWZxvK6qlwXK`), mirroring Contract Loader — done at slice-1 time with Andy's go-ahead (it's the live shared auth base).
+  3. `SSO_INTROSPECT_URL` set on this Vercel project [Andy to supply the value].
+- **Deliberate deviation, internal surface only**: `/admin` **fails closed** when `SSO_INTROSPECT_URL` is unset (locked page, not the doc's auth-disabled demo mode — that convention suits client-facing products, not a staff dashboard). Local dev uses an explicit localhost-only bypass flag.
+- **Clients do not go on SSO at signup.** Staff create client logins from the dashboard and issue a password (simple credential login for the portal). **[Andy: see open question in the review — Control already runs credential logins for client users of the Widget Suite, so the alternative is creating onboarding clients in Control from day one and skipping a parallel login system entirely.]**
 - **Transactional email is SendGrid** (platform-wide convention — see `docs/integrations/email-sendgrid.md`): `@sendgrid/mail`, verified `travelify.io` sender with display name "Travelgenix", inline-HTML templates with no external images. Env on this Vercel project when the automation slice lands: `SENDGRID_API_KEY`, an onboarding from-email, `APP_BASE_URL`. Never Brevo (marketing-only) and no new providers. Seam already in place, stubbed, at `src/lib/email/`.
 - **Milestone emails are Phase 2** (anti-wilting, not a Phase 3 delight feature).
 - Anti-wilting rules from the original brief: nudges always reference a specific task; never a generic chase.
