@@ -102,3 +102,67 @@ export interface AdminSnapshot {
   clients: AdminClientSummary[];
   teamTasks: AdminTeamTask[];
 }
+
+/* Client detail view shapes. */
+
+export interface AdminDetailTask {
+  id: string;
+  title: string;
+  description?: string;
+  audience: "client" | "internal";
+  owner: "client" | "travelgenix" | "both";
+  status: "todo" | "in-progress" | "done";
+  dueDate?: string;
+  optional: boolean;
+}
+
+export interface AdminDetailPhase {
+  number: number;
+  title: string;
+  tasks: AdminDetailTask[];
+}
+
+export interface AdminDetailSignal {
+  id: string;
+  signal: string;
+  detail: string;
+  whenLabel: string;
+}
+
+export interface AdminDetailConfidence {
+  id: string;
+  score: number;
+  whenLabel: string;
+}
+
+export interface AdminDetailDocument {
+  id: string;
+  name: string;
+  category: string;
+  status: string;
+  addedAt: string;
+}
+
+export interface AdminDetailIntakeSection {
+  title: string;
+  fields: { label: string; value: string }[];
+}
+
+export interface AdminDetailTraining {
+  id: string;
+  title: string;
+  type: "video" | "article";
+  done: boolean;
+}
+
+export interface AdminClientDetail {
+  summary: AdminClientSummary;
+  contactEmail?: string;
+  startedAt?: string;
+  phases: AdminDetailPhase[];
+  signals: AdminDetailSignal[];
+  confidences: AdminDetailConfidence[];
+  documents: AdminDetailDocument[];
+  intake: AdminDetailIntakeSection[];
+  training: AdminDetailTraining[];
+}

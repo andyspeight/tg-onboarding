@@ -13,14 +13,16 @@ import type {
   TrainingResource,
 } from "./types";
 import { INTAKE_SECTIONS } from "./mock-data";
-import { daysUntil, ukToday } from "./dates";
+import { daysUntil, shiftDays, ukToday } from "./dates";
 import {
   deriveHealth,
+  type AdminClientDetail,
   type AdminClientSummary,
   type AdminSnapshot,
   type AdminTeamTask,
   type TeamTaskUrgency,
 } from "./health";
+import { TASK_TEMPLATE } from "./task-template";
 
 /**
  * Airtable layer for the TG Onboarding base (appOSIsT3wpkTmit9).
@@ -54,6 +56,7 @@ const TABLES = {
 const CLIENT_F = {
   company: "fldV3aAKMwGbKweMJ",
   contactName: "fldPZiMqRPXgjI2Pi",
+  email: "fldBzYYxIjn2ERqXN",
   package: "fldOf62P3opdqJ5Gx",
   started: "fldiMG1sZjsRxJuer",
   accountManager: "fld4D5xpWTRS7sMUb",
@@ -113,6 +116,7 @@ const DOC_F = {
 
 const NOTIF_F = {
   text: "fldVS2s856UGlX0qo",
+  client: "fldSKG7ZIUIOTEiFe",
   kind: "fldPxVeVG953e5GBU",
   read: "fldzt104LVD9frRjZ",
   created: "fldhVXcH6IeyxfkwF",
@@ -146,7 +150,19 @@ const SIGNAL_F = {
 
 interface AirtableRecord {
   id: string;
+  createdTime?: string;
   fields: Record<string, unknown>;
+}
+
+/**
+ * Until client auth lands, the portal is pinned to the OLDEST client record
+ * (the seed client), so adding clients from the dashboard can never switch
+ * whose journey the public portal shows.
+ */
+function oldestFirst(records: AirtableRecord[]): AirtableRecord[] {
+  return [...records].sort((a, b) =>
+    (a.createdTime ?? "").localeCompare(b.createdTime ?? ""),
+  );
 }
 
 interface AirtableConfig {
@@ -420,7 +436,7 @@ export async function fetchJourneyFromAirtable(): Promise<OnboardingJourney | nu
         listAll(config, TABLES.confidenceRatings),
       ]);
 
-    const clientRecord = clients[0];
+    const clientRecord = oldestFirst(clients)[0];
     if (!clientRecord) return null;
 
     const client: ClientProfile = {
@@ -575,7 +591,7 @@ export async function getPortalClientId(
   config: AirtableConfig,
 ): Promise<string | null> {
   const clients = await listAll(config, TABLES.clients);
-  return clients[0]?.id ?? null;
+  return oldestFirst(clients)[0]?.id ?? null;
 }
 
 /** Append an engagement signal and bump the client's Last Active. */
@@ -725,6 +741,109 @@ export async function setTrainingCompletion(
   return true;
 }
 
+/** One client's derived health summary — shared by snapshot and detail. */
+function summariseClient(
+  clientRecord: AirtableRecord,
+  allTasks: AirtableRecord[],
+  phasesSorted: AirtableRecord[],
+  responseRecords: AirtableRecord[],
+  today: string,
+  nowMs: number,
+): AdminClientSummary {
+  const clientId = clientRecord.id;
+  const plan = str(clientRecord, CLIENT_F.package) || undefined;
+  const tasks = allTasks.filter((record) =>
+    links(record, TASK_F.client).includes(clientId),
+  );
+
+  const countable = tasks.filter(
+    (record) =>
+      asAudience(str(record, TASK_F.audience)) === "client" &&
+      !bool(record, TASK_F.optional),
+  );
+  const doneCount = countable.filter(
+    (record) => asStatus(str(record, TASK_F.status)) === "done",
+  ).length;
+  const pct =
+    countable.length === 0 ? 0 : Math.round((doneCount / countable.length) * 100);
+
+  // Overdue = tasks the CLIENT owes that have slipped.
+  const overdueCount = tasks.filter((record) => {
+    const due = str(record, TASK_F.due);
+    return (
+      asAudience(str(record, TASK_F.audience)) === "client" &&
+      asOwner(str(record, TASK_F.owner)) !== "travelgenix" &&
+      asStatus(str(record, TASK_F.status)) !== "done" &&
+      due !== "" &&
+      daysUntil(due, today) < 0
+    );
+  }).length;
+
+  // First phase whose countable tasks aren't all done = where they are.
+  const currentPhase = phasesSorted.find((phase) => {
+    const phaseCountable = countable.filter((record) =>
+      links(record, TASK_F.phase).includes(phase.id),
+    );
+    return (
+      phaseCountable.length > 0 &&
+      phaseCountable.some(
+        (record) => asStatus(str(record, TASK_F.status)) !== "done",
+      )
+    );
+  });
+
+  const startedAt = str(clientRecord, CLIENT_F.started);
+  const dayCount = startedAt ? Math.max(0, -daysUntil(startedAt, today)) : 0;
+
+  const lastActive = str(clientRecord, CLIENT_F.lastActive) || startedAt;
+  const daysQuiet = lastActive
+    ? Math.max(0, Math.floor((nowMs - Date.parse(lastActive)) / 86_400_000))
+    : 0;
+
+  // Intake completion against the sections this client's tier sees.
+  const tierFields = INTAKE_SECTIONS.filter(
+    (section) =>
+      !section.showForPlans ||
+      (plan !== undefined && section.showForPlans.includes(plan)),
+  )
+    .flatMap((section) => section.fields)
+    .filter((field) => field.type !== "upload");
+  const answeredIds = new Set(
+    responseRecords
+      .filter(
+        (record) =>
+          links(record, RESPONSE_F.client).includes(clientId) &&
+          str(record, RESPONSE_F.value) !== "",
+      )
+      .map((record) => str(record, RESPONSE_F.field)),
+  );
+  const answered = tierFields.filter((field) => answeredIds.has(field.id)).length;
+  const intakePct =
+    tierFields.length === 0 ? 0 : Math.round((answered / tierFields.length) * 100);
+
+  const { health, reasons } = deriveHealth({
+    daysQuiet,
+    overdueCount,
+    dayCount,
+    pct,
+  });
+
+  return {
+    id: clientId,
+    company: str(clientRecord, CLIENT_F.company),
+    contactName: str(clientRecord, CLIENT_F.contactName),
+    plan,
+    pct,
+    phaseTitle: currentPhase ? str(currentPhase, PHASE_F.title) : "Complete",
+    dayCount,
+    daysQuiet,
+    overdueCount,
+    intakePct,
+    health,
+    reasons,
+  };
+}
+
 /**
  * Everything the admin dashboard needs in one read: every client with
  * derived health, plus the open team tasks. Null when Airtable isn't
@@ -749,110 +868,9 @@ export async function fetchAdminSnapshot(): Promise<AdminSnapshot | null> {
       (a, b) => num(a, PHASE_F.number) - num(b, PHASE_F.number),
     );
 
-    const summaries: AdminClientSummary[] = clients.map((clientRecord) => {
-      const clientId = clientRecord.id;
-      const plan = str(clientRecord, CLIENT_F.package) || undefined;
-      const tasks = taskRecords.filter((record) =>
-        links(record, TASK_F.client).includes(clientId),
-      );
-
-      const countable = tasks.filter(
-        (record) =>
-          asAudience(str(record, TASK_F.audience)) === "client" &&
-          !bool(record, TASK_F.optional),
-      );
-      const doneCount = countable.filter(
-        (record) => asStatus(str(record, TASK_F.status)) === "done",
-      ).length;
-      const pct =
-        countable.length === 0
-          ? 0
-          : Math.round((doneCount / countable.length) * 100);
-
-      // Overdue = tasks the CLIENT owes that have slipped.
-      const overdueCount = tasks.filter((record) => {
-        const due = str(record, TASK_F.due);
-        return (
-          asAudience(str(record, TASK_F.audience)) === "client" &&
-          asOwner(str(record, TASK_F.owner)) !== "travelgenix" &&
-          asStatus(str(record, TASK_F.status)) !== "done" &&
-          due !== "" &&
-          daysUntil(due, today) < 0
-        );
-      }).length;
-
-      // First phase whose countable tasks aren't all done = where they are.
-      const currentPhase = phasesSorted.find((phase) => {
-        const phaseCountable = countable.filter((record) =>
-          links(record, TASK_F.phase).includes(phase.id),
-        );
-        return (
-          phaseCountable.length > 0 &&
-          phaseCountable.some(
-            (record) => asStatus(str(record, TASK_F.status)) !== "done",
-          )
-        );
-      });
-
-      const startedAt = str(clientRecord, CLIENT_F.started);
-      const dayCount = startedAt
-        ? Math.max(0, -daysUntil(startedAt, today))
-        : 0;
-
-      const lastActive = str(clientRecord, CLIENT_F.lastActive) || startedAt;
-      const daysQuiet = lastActive
-        ? Math.max(0, Math.floor((nowMs - Date.parse(lastActive)) / 86_400_000))
-        : 0;
-
-      // Intake completion against the sections this client's tier sees.
-      const tierFields = INTAKE_SECTIONS.filter(
-        (section) =>
-          !section.showForPlans ||
-          (plan !== undefined && section.showForPlans.includes(plan)),
-      )
-        .flatMap((section) => section.fields)
-        .filter((field) => field.type !== "upload");
-      const answeredIds = new Set(
-        responseRecords
-          .filter(
-            (record) =>
-              links(record, RESPONSE_F.client).includes(clientId) &&
-              str(record, RESPONSE_F.value) !== "",
-          )
-          .map((record) => str(record, RESPONSE_F.field)),
-      );
-      const answered = tierFields.filter((field) =>
-        answeredIds.has(field.id),
-      ).length;
-      const intakePct =
-        tierFields.length === 0
-          ? 0
-          : Math.round((answered / tierFields.length) * 100);
-
-      const { health, reasons } = deriveHealth({
-        daysQuiet,
-        overdueCount,
-        dayCount,
-        pct,
-      });
-
-      return {
-        id: clientId,
-        company: str(clientRecord, CLIENT_F.company),
-        contactName: str(clientRecord, CLIENT_F.contactName),
-        plan,
-        pct,
-        phaseTitle: currentPhase
-          ? str(currentPhase, PHASE_F.title)
-          : "Complete",
-        dayCount,
-        daysQuiet,
-        overdueCount,
-        intakePct,
-        health,
-        reasons,
-      };
-    });
+    const summaries: AdminClientSummary[] = clients.map((clientRecord) =>
+      summariseClient(clientRecord, taskRecords, phasesSorted, responseRecords, today, nowMs),
+    );
 
     const healthRank = { red: 0, amber: 1, green: 2 };
     summaries.sort(
@@ -961,4 +979,258 @@ export async function createClientDocumentWithFile(
     await deleteRecord(config, TABLES.documents, recordId).catch(() => {});
     throw new Error(`Airtable attachment upload responded ${uploadResponse.status}`);
   }
+}
+
+/**
+ * The staff view of one client: full journey including internal tasks,
+ * engagement history, confidence ratings, documents, intake answers and
+ * training state. Null when the client doesn't exist or Airtable is down.
+ */
+export async function fetchAdminClientDetail(
+  clientId: string,
+): Promise<AdminClientDetail | null> {
+  const config = airtableConfig();
+  if (!config) return null;
+
+  try {
+    const clientRecord = await getRecord(config, TABLES.clients, clientId);
+    if (!clientRecord) return null;
+
+    const [phaseRecords, taskRecords, responseRecords, signalRecords] =
+      await Promise.all([
+        listAll(config, TABLES.phases),
+        listAll(config, TABLES.tasks),
+        listAll(config, TABLES.intakeResponses),
+        listAll(config, TABLES.engagementSignals),
+      ]);
+    const [confidenceRecords, documentRecords, trainingRecords, completionRecords] =
+      await Promise.all([
+        listAll(config, TABLES.confidenceRatings),
+        listAll(config, TABLES.documents),
+        listAll(config, TABLES.training),
+        listAll(config, TABLES.trainingCompletions),
+      ]);
+
+    const today = ukToday();
+    const nowMs = Date.now();
+    const phasesSorted = [...phaseRecords].sort(
+      (a, b) => num(a, PHASE_F.number) - num(b, PHASE_F.number),
+    );
+
+    const summary = summariseClient(
+      clientRecord,
+      taskRecords,
+      phasesSorted,
+      responseRecords,
+      today,
+      nowMs,
+    );
+
+    const clientTasks = taskRecords
+      .filter((record) => links(record, TASK_F.client).includes(clientId))
+      .sort((a, b) => num(a, TASK_F.order) - num(b, TASK_F.order));
+
+    const phases = phasesSorted.map((phase) => ({
+      number: num(phase, PHASE_F.number),
+      title: str(phase, PHASE_F.title),
+      tasks: clientTasks
+        .filter((record) => links(record, TASK_F.phase).includes(phase.id))
+        .map((record) => ({
+          id: record.id,
+          title: str(record, TASK_F.title),
+          description: str(record, TASK_F.description) || undefined,
+          audience: asAudience(str(record, TASK_F.audience)),
+          owner: asOwner(str(record, TASK_F.owner)),
+          status: asStatus(str(record, TASK_F.status)),
+          dueDate: str(record, TASK_F.due) || undefined,
+          optional: bool(record, TASK_F.optional),
+        })),
+    }));
+
+    const signals = signalRecords
+      .filter((record) => links(record, SIGNAL_F.client).includes(clientId))
+      .sort(
+        (a, b) =>
+          Date.parse(str(b, SIGNAL_F.at)) - Date.parse(str(a, SIGNAL_F.at)),
+      )
+      .slice(0, 20)
+      .map((record) => ({
+        id: record.id,
+        signal: str(record, SIGNAL_F.signal),
+        detail: str(record, SIGNAL_F.detail),
+        whenLabel: relativeLabel(str(record, SIGNAL_F.at), nowMs),
+      }));
+
+    const confidences = confidenceRecords
+      .filter((record) => links(record, CONFIDENCE_F.client).includes(clientId))
+      .sort(
+        (a, b) =>
+          Date.parse(str(b, CONFIDENCE_F.ratedAt)) -
+          Date.parse(str(a, CONFIDENCE_F.ratedAt)),
+      )
+      .map((record) => ({
+        id: record.id,
+        score: num(record, CONFIDENCE_F.score),
+        whenLabel: relativeLabel(str(record, CONFIDENCE_F.ratedAt), nowMs),
+      }));
+
+    const documents = documentRecords
+      .filter((record) => links(record, DOC_F.client).includes(clientId))
+      .map((record) => ({
+        id: record.id,
+        name: str(record, DOC_F.name),
+        category: str(record, DOC_F.category),
+        status: str(record, DOC_F.status),
+        addedAt: str(record, DOC_F.added),
+      }));
+
+    const plan = summary.plan;
+    const responsesByField = new Map(
+      responseRecords
+        .filter((record) => links(record, RESPONSE_F.client).includes(clientId))
+        .map((record) => [
+          str(record, RESPONSE_F.field),
+          str(record, RESPONSE_F.value),
+        ]),
+    );
+    const intake = INTAKE_SECTIONS.filter(
+      (section) =>
+        !section.showForPlans ||
+        (plan !== undefined && section.showForPlans.includes(plan)),
+    ).map((section) => ({
+      title: section.title,
+      fields: section.fields
+        .filter((field) => field.type !== "upload")
+        .map((field) => ({
+          label: field.label,
+          value: responsesByField.get(field.id) ?? "",
+        })),
+    }));
+
+    const completedTrainingIds = new Set(
+      completionRecords
+        .filter((record) => links(record, COMPLETION_F.client).includes(clientId))
+        .map((record) => firstLink(record, COMPLETION_F.training)),
+    );
+    const training = [...trainingRecords]
+      .sort((a, b) => num(a, TRAINING_F.order) - num(b, TRAINING_F.order))
+      .map((record) => ({
+        id: record.id,
+        title: str(record, TRAINING_F.title),
+        type: (str(record, TRAINING_F.type) === "article"
+          ? "article"
+          : "video") as "article" | "video",
+        done: completedTrainingIds.has(record.id),
+      }));
+
+    return {
+      summary,
+      contactEmail: str(clientRecord, CLIENT_F.email) || undefined,
+      startedAt: str(clientRecord, CLIENT_F.started) || undefined,
+      phases,
+      signals,
+      confidences,
+      documents,
+      intake,
+      training,
+    };
+  } catch (error) {
+    console.error("[onboarding/airtable] client detail failed:", error);
+    return null;
+  }
+}
+
+export interface NewClientInput {
+  company: string;
+  contactName: string;
+  contactEmail: string;
+  plan: string;
+  accountManager: string;
+  startDate: string;
+}
+
+/**
+ * The add-client flow: create the Clients row, stamp out the journey
+ * template for their tier (due dates offset from the start date), and drop
+ * the welcome notification in their bell. Returns the new client record id.
+ * Login issuance joins this flow when the client-auth slice lands.
+ */
+export async function createClientWithJourney(
+  config: AirtableConfig,
+  input: NewClientInput,
+): Promise<string> {
+  const phaseRecords = await listAll(config, TABLES.phases);
+  const phaseIdByNumber = new Map(
+    phaseRecords.map((record) => [num(record, PHASE_F.number), record.id]),
+  );
+
+  const createResponse = await airtableFetch(config, TABLES.clients, {
+    method: "POST",
+    body: JSON.stringify({
+      records: [
+        {
+          fields: {
+            [CLIENT_F.company]: input.company,
+            [CLIENT_F.contactName]: input.contactName,
+            [CLIENT_F.email]: input.contactEmail,
+            [CLIENT_F.package]: input.plan,
+            [CLIENT_F.started]: input.startDate,
+            [CLIENT_F.accountManager]: input.accountManager,
+          },
+        },
+      ],
+      typecast: true,
+    }),
+  });
+  if (!createResponse.ok) {
+    throw new Error(`Airtable create client responded ${createResponse.status}`);
+  }
+  const created = (await createResponse.json()) as { records: { id: string }[] };
+  const clientId = created.records[0]?.id;
+  if (!clientId) throw new Error("Airtable create client returned no id");
+
+  const taskRows: Record<string, unknown>[] = [];
+  for (const [numberRaw, templates] of Object.entries(TASK_TEMPLATE)) {
+    const phaseId = phaseIdByNumber.get(Number(numberRaw));
+    if (!phaseId) continue;
+    templates
+      .filter(
+        (template) =>
+          !template.forPlans || template.forPlans.includes(input.plan),
+      )
+      .forEach((template, index) => {
+        taskRows.push({
+          [TASK_F.title]: template.title,
+          ...(template.description
+            ? { [TASK_F.description]: template.description }
+            : {}),
+          [TASK_F.client]: [clientId],
+          [TASK_F.phase]: [phaseId],
+          [TASK_F.audience]: template.audience,
+          [TASK_F.owner]: template.owner,
+          [TASK_F.status]: "todo",
+          ...(template.dueOffsetDays !== undefined
+            ? {
+                [TASK_F.due]: shiftDays(input.startDate, template.dueOffsetDays),
+              }
+            : {}),
+          ...(template.optional ? { [TASK_F.optional]: true } : {}),
+          [TASK_F.order]: index + 1,
+        });
+      });
+  }
+  for (let start = 0; start < taskRows.length; start += 8) {
+    await createRecords(config, TABLES.tasks, taskRows.slice(start, start + 8));
+  }
+
+  await createRecords(config, TABLES.notifications, [
+    {
+      [NOTIF_F.text]: "Welcome to Travelgenix. Your portal is ready.",
+      [NOTIF_F.client]: [clientId],
+      [NOTIF_F.kind]: "welcome",
+      [NOTIF_F.created]: new Date().toISOString(),
+    },
+  ]);
+
+  return clientId;
 }

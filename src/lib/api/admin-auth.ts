@@ -66,3 +66,14 @@ export function sessionSetCookie(token: string): string {
 export function sessionClearCookie(): string {
   return `${ADMIN_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
 }
+
+/** For API routes: is the request carrying a valid admin session? */
+export function adminSessionFromRequest(request: Request): boolean {
+  const header = request.headers.get("cookie") ?? "";
+  const token = header
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${ADMIN_COOKIE}=`))
+    ?.slice(ADMIN_COOKIE.length + 1);
+  return sessionTokenValid(token);
+}

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Overview } from "@/components/admin/Overview";
 import { fetchAdminSnapshot } from "@/lib/onboarding/airtable";
 
@@ -6,13 +7,23 @@ export default async function AdminOverviewPage() {
 
   return (
     <div className="anim-fade-up">
-      <h1 className="text-2xl font-extrabold tracking-tight text-fg">
-        Good to see you
-      </h1>
-      <p className="mt-1.5 text-sm leading-relaxed text-fg-muted">
-        Your onboarding overview: who’s moving, who’s slowing, and what needs
-        a nudge.
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight text-fg">
+            Good to see you
+          </h1>
+          <p className="mt-1.5 text-sm leading-relaxed text-fg-muted">
+            Your onboarding overview: who’s moving, who’s slowing, and what
+            needs a nudge.
+          </p>
+        </div>
+        <Link
+          href="/admin/clients/new"
+          className="press rounded-md bg-accent px-4 py-2.5 text-sm font-semibold text-accent-contrast transition-colors hover:bg-accent-strong"
+        >
+          Add client
+        </Link>
+      </div>
 
       <div className="mt-6">
         {snapshot ? (

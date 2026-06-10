@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { ProgressBar } from "@/components/ProgressBar";
 import type { AdminClientSummary, HealthLevel } from "@/lib/onboarding/health";
@@ -159,6 +160,7 @@ export function Overview({ clients }: { clients: AdminClientSummary[] }) {
             <span className="w-32 text-center">Phase</span>
             <span className="w-16 text-center">Intake</span>
             <span className="w-20 text-center">Quiet</span>
+            <span className="w-14" />
           </div>
           <ul className="divide-y divide-border">
             {visible.map((client) => (
@@ -201,6 +203,12 @@ export function Overview({ clients }: { clients: AdminClientSummary[] }) {
                 <p className="w-20 text-center text-[12px] tabular-nums text-fg-muted">
                   {client.daysQuiet}d
                 </p>
+                <Link
+                  href={`/admin/clients/${client.id}`}
+                  className="press w-14 shrink-0 rounded-md border border-border px-2.5 py-1 text-center text-[11px] font-medium text-fg-muted transition-colors hover:border-border-strong hover:text-fg"
+                >
+                  Open
+                </Link>
               </li>
             ))}
             {visible.length === 0 && (
