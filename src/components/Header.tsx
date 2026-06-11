@@ -17,15 +17,26 @@ export function Header({
   client,
   notifications,
   unreadMessages = 0,
+  showLogout = false,
 }: {
   client: ClientProfile;
   notifications: PortalNotification[];
   unreadMessages?: number;
+  showLogout?: boolean;
 }) {
   const pathname = usePathname();
   const liveItems = NAV_ITEMS.filter(
     (item): item is NavItem & { href: string } => item.href !== null,
   );
+
+  async function logout() {
+    await fetch("/api/client-logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    }).catch(() => {});
+    window.location.assign("/login");
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-bg/85 backdrop-blur-md lg:hidden">
@@ -75,6 +86,15 @@ export function Header({
             </Link>
           );
         })}
+        {showLogout && (
+          <button
+            type="button"
+            onClick={logout}
+            className="press inline-flex h-8 shrink-0 cursor-pointer items-center rounded-full px-3.5 text-[13px] font-medium text-fg-faint transition-colors hover:text-fg"
+          >
+            Log out
+          </button>
+        )}
       </nav>
     </header>
   );

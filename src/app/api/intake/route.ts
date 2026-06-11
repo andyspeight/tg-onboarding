@@ -1,11 +1,11 @@
 import { revalidatePath } from "next/cache";
 import {
   airtableConfig,
-  getPortalClientId,
   recordSignalAndTouch,
   saveIntakeResponses,
 } from "@/lib/onboarding/airtable";
 import { guardPost, jsonError } from "@/lib/api/guard";
+import { resolveRouteClientId } from "@/lib/api/client-auth";
 import { INTAKE_SECTIONS } from "@/lib/onboarding/mock-data";
 import type { IntakeField } from "@/lib/onboarding/types";
 
@@ -82,8 +82,8 @@ export async function POST(request: Request) {
   if (!config) return jsonError(503, "Not available");
 
   try {
-    const clientId = await getPortalClientId(config);
-    if (!clientId) return jsonError(503, "Not available");
+    const clientId = await resolveRouteClientId(request, config);
+    if (!clientId) return jsonError(401, "Sign in first");
 
     if (Object.keys(toSave).length > 0) {
       await saveIntakeResponses(config, clientId, toSave);

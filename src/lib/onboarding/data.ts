@@ -1,23 +1,56 @@
 import { cache } from "react";
-import { fetchJourneyFromAirtable } from "./airtable";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import {
+  airtableConfig,
+  fetchJourneyFromAirtable,
+  getPortalClientId,
+} from "./airtable";
+import {
+  CLIENT_COOKIE,
+  clientAuthConfigured,
+  clientIdFromToken,
+} from "@/lib/api/client-auth";
 import { makeMockJourney } from "./mock-data";
 import type { OnboardingJourney } from "./types";
 
 /**
- * THE SWAP POINT — now live.
+ * THE SWAP POINT — live, and since client auth landed, the portal's single
+ * enforcement gate.
  *
- * The journey reads from the TG Onboarding Airtable base when the env is
- * configured (AIRTABLE_PAT + AIRTABLE_BASE_ID, server-side only), and falls
- * back to local mock data otherwise — so dev without credentials and any
- * Airtable outage both keep the portal rendering. Nothing else in the app
- * reaches for data directly.
+ * Resolution order:
+ * - No Airtable env → mock journey, no login (local dev, demos, outages
+ *   at the env level).
+ * - CLIENT_AUTH_SECRET set → a valid session cookie is required; anything
+ *   else redirects to /login, and the journey is the SESSION's client.
+ * - Secret unset (compat) → the pre-auth behaviour: pinned to the oldest
+ *   client record. This is what production does until Andy flips the env.
  *
- * `cache` dedupes the read within a request, so the layout and the page see
- * the same journey (and the same asOf) on a single render pass.
+ * Every portal layout/page calls this, so protection can't be forgotten
+ * on a new page. `cache` dedupes within a request.
  */
-export const getJourney = cache(async (): Promise<OnboardingJourney> => {
-  const live = await fetchJourneyFromAirtable();
-  return live ?? makeMockJourney();
+const getJourney = cache(async (): Promise<OnboardingJourney> => {
+  const config = airtableConfig();
+  if (!config) return makeMockJourney();
+
+  let clientId: string | null;
+  if (clientAuthConfigured()) {
+    const cookieStore = await cookies();
+    clientId = clientIdFromToken(cookieStore.get(CLIENT_COOKIE)?.value);
+    if (!clientId) redirect("/login");
+  } else {
+    clientId = await getPortalClientId(config);
+  }
+  if (!clientId) return makeMockJourney();
+
+  const live = await fetchJourneyFromAirtable(clientId);
+  if (!live) {
+    // Stale session (client removed) or Airtable trouble. With auth on,
+    // never show another journey — back to the door.
+    if (clientAuthConfigured()) redirect("/login");
+    return makeMockJourney();
+  }
+  return live;
 });
 
 /**

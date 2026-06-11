@@ -2,10 +2,10 @@ import { revalidatePath } from "next/cache";
 import {
   airtableConfig,
   createClientDocumentWithFile,
-  getPortalClientId,
   recordSignalAndTouch,
 } from "@/lib/onboarding/airtable";
 import { guardPost, jsonError } from "@/lib/api/guard";
+import { resolveRouteClientId } from "@/lib/api/client-auth";
 import {
   DOCUMENT_EXTENSIONS,
   LOGO_EXTENSIONS,
@@ -67,8 +67,8 @@ export async function POST(request: Request) {
   if (!config) return jsonError(503, "Not available");
 
   try {
-    const clientId = await getPortalClientId(config);
-    if (!clientId) return jsonError(503, "Not available");
+    const clientId = await resolveRouteClientId(request, config);
+    if (!clientId) return jsonError(401, "Sign in first");
 
     await createClientDocumentWithFile(config, clientId, {
       name,

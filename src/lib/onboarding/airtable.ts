@@ -25,6 +25,7 @@ import {
   type SupplierCategory,
   type TeamTaskUrgency,
 } from "./health";
+import { revalidateTag } from "next/cache";
 import { TASK_TEMPLATE } from "./task-template";
 import { send } from "../email";
 import {
@@ -135,6 +136,9 @@ const CLIENT_F = {
   started: "fldiMG1sZjsRxJuer",
   accountManager: "fld4D5xpWTRS7sMUb",
   lastActive: "fldUegCPTvsPnK5pG",
+  codeHash: "fldWeUGMasJqrqla5",
+  codeIssuedAt: "fldNqmk6H29F9KeB5",
+  lastLoginAt: "fld3F5xoTxXJADpsr",
 };
 
 const PHASE_F = {
@@ -262,7 +266,7 @@ function oldestFirst(records: AirtableRecord[]): AirtableRecord[] {
   );
 }
 
-interface AirtableConfig {
+export interface AirtableConfig {
   pat: string;
   baseId: string;
 }
@@ -299,6 +303,9 @@ function firstLink(record: AirtableRecord, fieldId: string): string {
   return links(record, fieldId)[0] ?? "";
 }
 
+/** Every cached Airtable read carries this tag; writes revalidate it. */
+export const AIRTABLE_TAG = "airtable";
+
 async function airtableFetch(
   config: AirtableConfig,
   path: string,
@@ -314,10 +321,19 @@ async function airtableFetch(
   });
 }
 
-/** Fetch every record from a table, following pagination. */
+/**
+ * Fetch every record from a table, following pagination.
+ *
+ * `cached` opts a read into the shared 60s data cache (tagged so write
+ * routes can revalidate). The journey path uses it — the portal is
+ * per-request since client auth, and this keeps Airtable traffic flat no
+ * matter how many clients are browsing. Verification reads before writes
+ * and the admin/cron paths stay fresh.
+ */
 async function listAll(
   config: AirtableConfig,
   tableId: string,
+  cached = false,
 ): Promise<AirtableRecord[]> {
   const records: AirtableRecord[] = [];
   let offset: string | undefined;
@@ -326,7 +342,9 @@ async function listAll(
     const params = new URLSearchParams({ returnFieldsByFieldId: "true" });
     if (offset) params.set("offset", offset);
 
-    const response = await airtableFetch(config, `${tableId}?${params}`);
+    const response = await airtableFetch(config, `${tableId}?${params}`, {
+      ...(cached ? { next: { revalidate: 60, tags: [AIRTABLE_TAG] } } : {}),
+    });
     if (!response.ok) {
       throw new Error(`Airtable ${tableId} responded ${response.status}`);
     }
@@ -359,6 +377,19 @@ export async function getRecord(
   return (await response.json()) as AirtableRecord;
 }
 
+/**
+ * Every write marks the shared 60s read cache stale (stale-while-
+ * revalidate), so the next portal render picks up fresh data instead of
+ * waiting out the timer. Safe no-op outside a request context (cron).
+ */
+function bustReadCache(): void {
+  try {
+    revalidateTag(AIRTABLE_TAG, "max");
+  } catch {
+    // Outside a revalidation-capable context — the 60s timer covers it.
+  }
+}
+
 async function updateRecord(
   config: AirtableConfig,
   tableId: string,
@@ -372,6 +403,7 @@ async function updateRecord(
   if (!response.ok) {
     throw new Error(`Airtable update ${tableId} responded ${response.status}`);
   }
+  bustReadCache();
 }
 
 async function createRecords(
@@ -389,6 +421,7 @@ async function createRecords(
   if (!response.ok) {
     throw new Error(`Airtable create ${tableId} responded ${response.status}`);
   }
+  bustReadCache();
 }
 
 async function updateRecords(
@@ -403,6 +436,7 @@ async function updateRecords(
   if (!response.ok) {
     throw new Error(`Airtable update ${tableId} responded ${response.status}`);
   }
+  bustReadCache();
 }
 
 async function deleteRecord(
@@ -416,6 +450,7 @@ async function deleteRecord(
   if (!response.ok) {
     throw new Error(`Airtable delete ${tableId} responded ${response.status}`);
   }
+  bustReadCache();
 }
 
 function asOwner(value: string): TaskOwner {
@@ -503,39 +538,57 @@ function intakeWithLiveSuppliers(
 }
 
 /**
- * Read the full journey from Airtable. Returns null when the integration
- * isn't configured or the read fails — callers fall back to mock data and
- * the portal keeps rendering.
+ * Read one client's journey from Airtable. Returns null when the
+ * integration isn't configured, the client doesn't exist, or the read
+ * fails — callers fall back to mock data and the portal keeps rendering.
+ *
+ * Every per-client table is filtered by the client link here; global
+ * tables (phases, training, suppliers) pass through. Reads are cached 60s
+ * and shared across clients — filtering happens in code, not per-request
+ * Airtable queries.
  */
-export async function fetchJourneyFromAirtable(): Promise<OnboardingJourney | null> {
+export async function fetchJourneyFromAirtable(
+  clientId: string,
+): Promise<OnboardingJourney | null> {
   const config = airtableConfig();
   if (!config) return null;
 
   try {
     // Three waves to stay inside Airtable's 5 requests/second per base.
-    const [clients, phaseRecords, taskRecords, trainingRecords] =
+    const [clients, phaseRecords, allTaskRecords, trainingRecords] =
       await Promise.all([
-        listAll(config, TABLES.clients),
-        listAll(config, TABLES.phases),
-        listAll(config, TABLES.tasks),
-        listAll(config, TABLES.training),
+        listAll(config, TABLES.clients, true),
+        listAll(config, TABLES.phases, true),
+        listAll(config, TABLES.tasks, true),
+        listAll(config, TABLES.training, true),
       ]);
-    const [documentRecords, notificationRecords, supplierRecords] =
+    const [allDocumentRecords, allNotificationRecords, supplierRecords] =
       await Promise.all([
-        listAll(config, TABLES.documents),
-        listAll(config, TABLES.notifications),
-        listAll(config, TABLES.suppliers),
+        listAll(config, TABLES.documents, true),
+        listAll(config, TABLES.notifications, true),
+        listAll(config, TABLES.suppliers, true),
       ]);
-    const [completionRecords, responseRecords, confidenceRecords, messageRecords] =
+    const [allCompletionRecords, allResponseRecords, allConfidenceRecords, messageRecords] =
       await Promise.all([
-        listAll(config, TABLES.trainingCompletions),
-        listAll(config, TABLES.intakeResponses),
-        listAll(config, TABLES.confidenceRatings),
-        listAll(config, TABLES.messages),
+        listAll(config, TABLES.trainingCompletions, true),
+        listAll(config, TABLES.intakeResponses, true),
+        listAll(config, TABLES.confidenceRatings, true),
+        listAll(config, TABLES.messages, true),
       ]);
 
-    const clientRecord = oldestFirst(clients)[0];
+    const clientRecord = clients.find((record) => record.id === clientId);
     if (!clientRecord) return null;
+
+    const mine = (records: AirtableRecord[], clientField: string) =>
+      records.filter((record) =>
+        links(record, clientField).includes(clientId),
+      );
+    const taskRecords = mine(allTaskRecords, TASK_F.client);
+    const documentRecords = mine(allDocumentRecords, DOC_F.client);
+    const notificationRecords = mine(allNotificationRecords, NOTIF_F.client);
+    const completionRecords = mine(allCompletionRecords, COMPLETION_F.client);
+    const responseRecords = mine(allResponseRecords, RESPONSE_F.client);
+    const confidenceRecords = mine(allConfidenceRecords, CONFIDENCE_F.client);
 
     const client: ClientProfile = {
       company: str(clientRecord, CLIENT_F.company),
@@ -720,15 +773,53 @@ export async function fetchJourneyFromAirtable(): Promise<OnboardingJourney | nu
 /* ------------------------------------------------------------------------ */
 
 /**
- * Phase 1 is single-tenant: routes resolve the demo client server-side and
- * never trust a client id from the browser. Real auth replaces this lookup
- * in a later phase.
+ * Compat lookup while CLIENT_AUTH_SECRET is unset: the portal stays pinned
+ * to the OLDEST client record (the seed client). Once the secret is set,
+ * sessions replace this everywhere.
  */
 export async function getPortalClientId(
   config: AirtableConfig,
 ): Promise<string | null> {
   const clients = await listAll(config, TABLES.clients);
   return oldestFirst(clients)[0]?.id ?? null;
+}
+
+/** Login lookup: case-insensitive email match. Fresh read, never cached. */
+export async function findClientByEmail(
+  config: AirtableConfig,
+  email: string,
+): Promise<{ id: string; codeHash: string } | null> {
+  const needle = email.trim().toLowerCase();
+  if (!needle) return null;
+  const clients = await listAll(config, TABLES.clients);
+  const match = clients.find(
+    (record) => str(record, CLIENT_F.email).trim().toLowerCase() === needle,
+  );
+  return match
+    ? { id: match.id, codeHash: str(match, CLIENT_F.codeHash) }
+    : null;
+}
+
+/** Store a freshly issued access code hash (replaces any previous code). */
+export async function storeAccessCodeHash(
+  config: AirtableConfig,
+  clientId: string,
+  hash: string,
+): Promise<void> {
+  await updateRecord(config, TABLES.clients, clientId, {
+    [CLIENT_F.codeHash]: hash,
+    [CLIENT_F.codeIssuedAt]: new Date().toISOString(),
+  });
+}
+
+/** Stamp a successful login. */
+export async function markClientLogin(
+  config: AirtableConfig,
+  clientId: string,
+): Promise<void> {
+  await updateRecord(config, TABLES.clients, clientId, {
+    [CLIENT_F.lastLoginAt]: new Date().toISOString(),
+  });
 }
 
 /** Append an engagement signal and bump the client's Last Active. */
@@ -1115,6 +1206,7 @@ export async function createClientDocumentWithFile(
   if (!createResponse.ok) {
     throw new Error(`Airtable create document responded ${createResponse.status}`);
   }
+  bustReadCache();
   const created = (await createResponse.json()) as {
     records: { id: string }[];
   };
@@ -1320,6 +1412,10 @@ export async function fetchAdminClientDetail(
       intake,
       training,
       messages,
+      portalAccess: {
+        codeIssuedAt: str(clientRecord, CLIENT_F.codeIssuedAt) || undefined,
+        lastLoginAt: str(clientRecord, CLIENT_F.lastLoginAt) || undefined,
+      },
     };
   } catch (error) {
     console.error("[onboarding/airtable] client detail failed:", error);
@@ -1494,6 +1590,7 @@ export async function sendMessage(
   if (!response.ok) {
     throw new Error(`Airtable create message responded ${response.status}`);
   }
+  bustReadCache();
   const created = (await response.json()) as { records: { id: string }[] };
   const recordId = created.records[0]?.id;
 

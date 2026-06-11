@@ -1,10 +1,10 @@
 import { revalidatePath } from "next/cache";
 import {
   airtableConfig,
-  getPortalClientId,
   markMessagesRead,
 } from "@/lib/onboarding/airtable";
 import { guardPost, jsonError } from "@/lib/api/guard";
+import { resolveRouteClientId } from "@/lib/api/client-auth";
 
 /** The client opened Messages: mark the team's messages as seen. */
 export async function POST(request: Request) {
@@ -15,8 +15,8 @@ export async function POST(request: Request) {
   if (!config) return jsonError(503, "Not available");
 
   try {
-    const clientId = await getPortalClientId(config);
-    if (!clientId) return jsonError(503, "Not available");
+    const clientId = await resolveRouteClientId(request, config);
+    if (!clientId) return jsonError(401, "Sign in first");
 
     await markMessagesRead(config, clientId, "client");
     revalidatePath("/messages");

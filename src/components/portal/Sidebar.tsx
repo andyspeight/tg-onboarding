@@ -46,12 +46,23 @@ export function Sidebar({
   client,
   notifications,
   unreadMessages = 0,
+  showLogout = false,
 }: {
   client: ClientProfile;
   notifications: PortalNotification[];
   unreadMessages?: number;
+  showLogout?: boolean;
 }) {
   const pathname = usePathname();
+
+  async function logout() {
+    await fetch("/api/client-logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    }).catch(() => {});
+    window.location.assign("/login");
+  }
 
   return (
     <aside className="sticky top-0 hidden h-dvh w-[232px] shrink-0 flex-col bg-brand-gradient text-white lg:flex">
@@ -137,17 +148,30 @@ export function Sidebar({
         })}
       </nav>
 
-      {client.accountManager && (
+      {(client.accountManager || showLogout) && (
         <div className="border-t border-white/10 bg-black/10 px-5 py-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
-            Your account manager
-          </p>
-          <p className="mt-2 flex items-center gap-2.5 text-[13px] font-medium">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/15 text-[11px] font-bold">
-              {client.accountManager.charAt(0)}
-            </span>
-            {client.accountManager}
-          </p>
+          {client.accountManager && (
+            <>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
+                Your account manager
+              </p>
+              <p className="mt-2 flex items-center gap-2.5 text-[13px] font-medium">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/15 text-[11px] font-bold">
+                  {client.accountManager.charAt(0)}
+                </span>
+                {client.accountManager}
+              </p>
+            </>
+          )}
+          {showLogout && (
+            <button
+              type="button"
+              onClick={logout}
+              className="press mt-3 cursor-pointer text-[11px] font-medium text-white/40 transition-colors hover:text-white/80"
+            >
+              Log out
+            </button>
+          )}
         </div>
       )}
     </aside>

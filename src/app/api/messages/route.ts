@@ -3,12 +3,12 @@ import {
   airtableConfig,
   countTeamUnread,
   fetchActiveKnowledge,
-  getPortalClientId,
   getRecord,
   recordSignalAndTouch,
   sendMessage,
 } from "@/lib/onboarding/airtable";
 import { guardPost, jsonError } from "@/lib/api/guard";
+import { resolveRouteClientId } from "@/lib/api/client-auth";
 import { parseMessageFile } from "@/lib/api/message-file";
 import { lunaAnswer } from "@/lib/luna";
 import { send } from "@/lib/email";
@@ -47,8 +47,8 @@ export async function POST(request: Request) {
   if (!config) return jsonError(503, "Not available");
 
   try {
-    const clientId = await getPortalClientId(config);
-    if (!clientId) return jsonError(503, "Not available");
+    const clientId = await resolveRouteClientId(request, config);
+    if (!clientId) return jsonError(401, "Sign in first");
 
     // Was the inbox clear before this message? Decides the staff email.
     const unreadBefore = await countTeamUnread(config, clientId);

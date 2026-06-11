@@ -42,10 +42,12 @@ Alerts fire on the *transition* into amber/red (no daily re-alerting), are logge
 - Discipline: max one client email per day, UK working hours only, every send logged to the Automation Log.
 
 ## Client auth (closes the security interims)
-- `/login` for clients: email + staff-issued password, hashed at rest, sessions via secure httpOnly cookie, forced password change on first sign-in, staff reset from the dashboard. Storage approach (Airtable-held hashes vs a small auth service) decided at review.
-- Portal becomes multi-tenant: every read/write scoped to the signed-in client (replaces the single-demo-client interim).
-- Lands together with: shared-store rate limiting and the CSP header.
-- **Gate: no real client data in the system before this slice ships.**
+> **Shipped 10 Jun**, with one deliberate simplification: staff-issued **access codes** instead of passwords. Codes are high-entropy random strings (`TG-XXXXX-XXXXX-XXXXX`, ~77 bits), so HMAC-SHA256 at rest (peppered by `CLIENT_AUTH_SECRET`) replaces bcrypt and there's nothing weak to force a change of — reissue from the dashboard replaces reset. Activation is explicit: **everything ships dark until `CLIENT_AUTH_SECRET` is set on Vercel**; until then the portal keeps the pinned-demo-client behaviour, so flipping auth on is an env change, not a deploy.
+- `/login` for clients: email + access code → signed, expiring (30 days), httpOnly session cookie. Hard rate limit (5/min/IP), one generic error for every failure mode, dummy hash compare on unknown emails. Rotating `CLIENT_AUTH_SECRET` invalidates every session and every issued code, independently of the staff passcode.
+- Staff side: "Portal access" card on the client detail — issue/reissue shows the code once, never stores plaintext, records issued-at and last-login.
+- Portal multi-tenant: the journey resolves from the session inside `getClientJourney` (single enforcement point — new pages are protected by construction); every write route resolves the client from the cookie, never the request body. Per-client tables (tasks, documents, notifications, intake, confidence, completions, messages) are filtered server-side.
+- Caching reshaped for per-session rendering: journey reads share a tagged 60s fetch cache; every Airtable write marks it stale (`revalidateTag`, SWR), so cross-client load stays flat.
+- Still open from the interims list: shared-store rate limiting (in-memory per instance today) and the CSP header. **The no-real-client-data gate lifts once `CLIENT_AUTH_SECRET` is live and those two land.**
 
 ## Messaging panel
 Agent-to-client messaging (per the Phase 1 spec's deferral): Messages tab goes live in the portal, with the staff side in the client detail view; task-linked threads as per the prototype.
@@ -60,7 +62,7 @@ Real contextual help through the Phase 1 seam (`src/lib/luna/`): server-side rou
 2. Overview + client health list (health rules live) + team tasks — **shipped 10 Jun**
 3. Client detail view
 4. Add client (provisioning + login issuance)
-5. Client auth + multi-tenancy + security interims closed
+5. Client auth + multi-tenancy — **shipped 10 Jun** (access codes; dark until `CLIENT_AUTH_SECRET` set; rate-limit store + CSP still open)
 6. Automation engine (nudges, milestones, alert emails via SendGrid) — **shipped 10 Jun**
    > Daily Vercel Cron (`/api/cron/automation`, 08:00 UTC, secured by `CRON_SECRET`). Reminders 2 days before / 1 day after a due date (in-portal always, email capped one-per-client-per-day), milestone emails at 50%/75%, staff wilting alerts (to `STAFF_ALERT_EMAIL`) at most weekly per level, UK weekdays only. Every action logged to the new Automation Log table (`tbl6JmGMnuRvHbYuc`), which also dedupes sends and powers the dashboard panel. Welcome email fires from the add-client flow. **Env to set when going live: `SENDGRID_API_KEY`, `ONBOARDING_FROM_EMAIL` (verified travelify.io sender), `APP_BASE_URL`, `CRON_SECRET`, `STAFF_ALERT_EMAIL`.** Until `SENDGRID_API_KEY` is set, sends are clean no-ops and still logged.
 7. Suppliers admin — **shipped 10 Jun**

@@ -1,11 +1,11 @@
 import { revalidatePath } from "next/cache";
 import {
   airtableConfig,
-  getPortalClientId,
   recordSignalAndTouch,
   saveConfidenceRating,
 } from "@/lib/onboarding/airtable";
 import { guardPost, jsonError } from "@/lib/api/guard";
+import { resolveRouteClientId } from "@/lib/api/client-auth";
 
 /** Record a 1–10 confidence self-rating (the go-live gate). */
 export async function POST(request: Request) {
@@ -22,8 +22,8 @@ export async function POST(request: Request) {
   if (!config) return jsonError(503, "Not available");
 
   try {
-    const clientId = await getPortalClientId(config);
-    if (!clientId) return jsonError(503, "Not available");
+    const clientId = await resolveRouteClientId(request, config);
+    if (!clientId) return jsonError(401, "Sign in first");
 
     await saveConfidenceRating(config, clientId, score);
     await recordSignalAndTouch(

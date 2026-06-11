@@ -1,5 +1,6 @@
 import { ProgressBar } from "@/components/ProgressBar";
 import { ClientMessages } from "@/components/admin/ClientMessages";
+import { PortalAccessCard } from "@/components/admin/PortalAccessCard";
 import type { AdminClientDetail } from "@/lib/onboarding/health";
 import { formatShortDate } from "@/lib/onboarding/dates";
 
@@ -73,6 +74,13 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
           </div>
         </div>
       </section>
+
+      <PortalAccessCard
+        clientId={summary.id}
+        contactEmail={detail.contactEmail}
+        codeIssuedAt={detail.portalAccess.codeIssuedAt}
+        lastLoginAt={detail.portalAccess.lastLoginAt}
+      />
 
       <section>
         <h2 className="mb-2.5 text-[13px] font-bold text-fg">

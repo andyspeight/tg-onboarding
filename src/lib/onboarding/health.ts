@@ -179,6 +179,8 @@ export interface AdminClientDetail {
   training: AdminDetailTraining[];
   /** Thread oldest-first, capped to the recent window. */
   messages: AdminDetailMessage[];
+  /** Portal login state — staff issue and rotate codes from the detail page. */
+  portalAccess: { codeIssuedAt?: string; lastLoginAt?: string };
 }
 
 export type SupplierCategory =

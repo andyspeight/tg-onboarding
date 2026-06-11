@@ -1,11 +1,11 @@
 import { revalidatePath } from "next/cache";
 import {
   airtableConfig,
-  getPortalClientId,
   recordSignalAndTouch,
   setTaskStatus,
 } from "@/lib/onboarding/airtable";
 import { guardPost, isRecordId, jsonError } from "@/lib/api/guard";
+import { resolveRouteClientId } from "@/lib/api/client-auth";
 
 const STATUSES = ["todo", "in-progress", "done"] as const;
 type Status = (typeof STATUSES)[number];
@@ -27,8 +27,8 @@ export async function POST(request: Request) {
   if (!config) return jsonError(503, "Not available");
 
   try {
-    const clientId = await getPortalClientId(config);
-    if (!clientId) return jsonError(503, "Not available");
+    const clientId = await resolveRouteClientId(request, config);
+    if (!clientId) return jsonError(401, "Sign in first");
 
     const updated = await setTaskStatus(
       config,
