@@ -1,31 +1,14 @@
 /**
  * Shared protection for the portal's write routes (travelgenix-security).
  *
- * Phase 1 has no client auth (Control SSO is a later phase), so these routes
- * are guarded by: same-origin checks, per-IP rate limits, strict input
- * validation in each route, and writes that are scoped server-side to the
- * single demo client. Fine for a sandbox holding fictitious data; real
- * client data does not ship until auth lands.
- *
- * The rate limiter is in-memory per serverless instance — an interim
- * measure, swapped for a shared store (e.g. Upstash) alongside auth.
+ * Same-origin checks, per-IP rate limits (shared store when configured —
+ * see rate-limit.ts), strict input validation in each route, and writes
+ * scoped server-side to the session's client.
  */
 
+import { rateLimited } from "./rate-limit";
+
 const DEFAULT_MAX_BODY_BYTES = 10_000;
-
-const hits = new Map<string, number[]>();
-
-function rateLimited(key: string, limit: number, windowMs: number): boolean {
-  const now = Date.now();
-  const recent = (hits.get(key) ?? []).filter((time) => now - time < windowMs);
-  if (recent.length >= limit) {
-    hits.set(key, recent);
-    return true;
-  }
-  recent.push(now);
-  hits.set(key, recent);
-  return false;
-}
 
 function clientIp(request: Request): string {
   return (
@@ -67,7 +50,7 @@ export async function guardPost(
     return { ok: false, response: jsonError(403, "Forbidden") };
   }
 
-  if (rateLimited(`${route}:${clientIp(request)}`, limitPerMinute, 60_000)) {
+  if (await rateLimited(`${route}:${clientIp(request)}`, limitPerMinute, 60_000)) {
     console.warn(`[api/${route}] rejected: rate limit`);
     return { ok: false, response: jsonError(429, "Too many requests") };
   }

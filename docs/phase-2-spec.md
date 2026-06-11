@@ -47,7 +47,10 @@ Alerts fire on the *transition* into amber/red (no daily re-alerting), are logge
 - Staff side: "Portal access" card on the client detail — issue/reissue shows the code once, never stores plaintext, records issued-at and last-login.
 - Portal multi-tenant: the journey resolves from the session inside `getClientJourney` (single enforcement point — new pages are protected by construction); every write route resolves the client from the cookie, never the request body. Per-client tables (tasks, documents, notifications, intake, confidence, completions, messages) are filtered server-side.
 - Caching reshaped for per-session rendering: journey reads share a tagged 60s fetch cache; every Airtable write marks it stale (`revalidateTag`, SWR), so cross-client load stays flat.
-- Still open from the interims list: shared-store rate limiting (in-memory per instance today) and the CSP header. **The no-real-client-data gate lifts once `CLIENT_AUTH_SECRET` is live and those two land.**
+- ~~Still open from the interims list: shared-store rate limiting and the CSP header.~~ **Both closed 10 Jun:**
+  - Rate limiting goes through a shared Upstash Redis store the moment the Vercel Marketplace integration is connected (`UPSTASH_REDIS_REST_URL/_TOKEN` or `KV_REST_API_URL/_TOKEN`, plain-fetch REST, fixed 1-minute windows). Without the env it degrades to the original per-instance window with a server log — never an outage.
+  - Nonce-based CSP via `src/proxy.ts` on every page: `script-src 'self' 'nonce-…' 'strict-dynamic'`, plus nosniff, frame deny, referrer and permissions policies. Documented residuals: `style-src 'unsafe-inline'` (React style attributes; script execution stays strict) and `img-src` allowing Airtable's attachment CDN for message images.
+  - **The no-real-client-data gate lifts when `CLIENT_AUTH_SECRET` is set and the Upstash store is connected.**
 
 ## Messaging panel
 Agent-to-client messaging (per the Phase 1 spec's deferral): Messages tab goes live in the portal, with the staff side in the client detail view; task-linked threads as per the prototype.
