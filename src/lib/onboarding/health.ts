@@ -197,4 +197,7 @@ export interface AdminSupplier {
   /** Raw comma-delimited string as stored; split for pills at render. */
   features: string;
   links: { label: string; url: string }[];
+  contactEmail: string;
+  contactPhone: string;
+  contactNotes: string;
 }

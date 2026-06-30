@@ -152,6 +152,10 @@ export interface PortalSupplier {
   /** Rendered as feature pills. */
   features: string[];
   links: SupplierLink[];
+  /** Contact details for opening an account / getting set up. */
+  contactEmail?: string;
+  contactPhone?: string;
+  contactNotes?: string;
 }
 
 /** A document in the client's hub, grouped by category. */

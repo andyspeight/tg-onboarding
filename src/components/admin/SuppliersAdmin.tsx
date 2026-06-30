@@ -19,6 +19,9 @@ interface SupplierFormState {
   description: string;
   features: string;
   links: { label: string; url: string }[];
+  contactEmail: string;
+  contactPhone: string;
+  contactNotes: string;
 }
 
 function emptyForm(): SupplierFormState {
@@ -32,6 +35,9 @@ function emptyForm(): SupplierFormState {
       { label: "", url: "" },
       { label: "", url: "" },
     ],
+    contactEmail: "",
+    contactPhone: "",
+    contactNotes: "",
   };
 }
 
@@ -45,6 +51,9 @@ function formFromSupplier(supplier: AdminSupplier): SupplierFormState {
     description: supplier.description,
     features: supplier.features,
     links,
+    contactEmail: supplier.contactEmail,
+    contactPhone: supplier.contactPhone,
+    contactNotes: supplier.contactNotes,
   };
 }
 
@@ -159,6 +168,47 @@ function SupplierFields({
           ))}
         </div>
       </fieldset>
+
+      <fieldset>
+        <legend className="text-[12px] font-medium text-fg">
+          Contact details (shown on the client’s supplier card)
+        </legend>
+        <div className="mt-1 grid gap-2 sm:grid-cols-2">
+          <input
+            type="email"
+            value={form.contactEmail}
+            onChange={(event) =>
+              onChange({ ...form, contactEmail: event.target.value })
+            }
+            maxLength={200}
+            placeholder="Contact email, e.g. commercial@supplier.com"
+            aria-label="Supplier contact email"
+            className={inputClasses}
+          />
+          <input
+            type="tel"
+            value={form.contactPhone}
+            onChange={(event) =>
+              onChange({ ...form, contactPhone: event.target.value })
+            }
+            maxLength={50}
+            placeholder="Contact phone"
+            aria-label="Supplier contact phone"
+            className={inputClasses}
+          />
+        </div>
+        <textarea
+          value={form.contactNotes}
+          onChange={(event) =>
+            onChange({ ...form, contactNotes: event.target.value })
+          }
+          maxLength={1000}
+          rows={2}
+          placeholder="How to get set up, e.g. “Email commercial@major.travel for API credentials.”"
+          aria-label="Supplier contact notes"
+          className={`mt-2 resize-y py-2 ${inputClasses} h-auto`}
+        />
+      </fieldset>
     </div>
   );
 }
@@ -185,6 +235,9 @@ export function SuppliersAdmin({ initial }: { initial: AdminSupplier[] }) {
       description: form.description.trim(),
       features: form.features.trim(),
       links: form.links.filter((link) => link.url.trim() !== ""),
+      contactEmail: form.contactEmail.trim(),
+      contactPhone: form.contactPhone.trim(),
+      contactNotes: form.contactNotes.trim(),
     };
   }
 

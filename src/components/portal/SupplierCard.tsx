@@ -79,6 +79,41 @@ export function SupplierCard({
               ))}
             </p>
           )}
+
+          {(supplier.contactEmail ||
+            supplier.contactPhone ||
+            supplier.contactNotes) && (
+            <div className="mt-3 border-t border-border pt-2.5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-fg-faint">
+                How to get set up
+              </p>
+              {supplier.contactNotes && (
+                <p className="mt-1 text-[12px] leading-relaxed text-fg-muted">
+                  {supplier.contactNotes}
+                </p>
+              )}
+              {(supplier.contactEmail || supplier.contactPhone) && (
+                <p className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[12px]">
+                  {supplier.contactEmail && (
+                    <a
+                      href={`mailto:${supplier.contactEmail}`}
+                      className="font-medium text-accent transition-colors hover:text-accent-strong"
+                    >
+                      {supplier.contactEmail}
+                    </a>
+                  )}
+                  {supplier.contactPhone && (
+                    <a
+                      href={`tel:${supplier.contactPhone.replace(/\s+/g, "")}`}
+                      className="font-medium text-accent transition-colors hover:text-accent-strong"
+                    >
+                      {supplier.contactPhone}
+                    </a>
+                  )}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </article>

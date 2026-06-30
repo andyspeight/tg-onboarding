@@ -49,6 +49,21 @@ function parseSupplierInput(body: Record<string, unknown>): SupplierInput | null
     typeof body.features === "string" ? body.features.trim() : "";
   if (features.length > 300) return null;
 
+  const contactEmail =
+    typeof body.contactEmail === "string" ? body.contactEmail.trim() : "";
+  if (contactEmail.length > 200) return null;
+  if (contactEmail !== "" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+    return null;
+  }
+
+  const contactPhone =
+    typeof body.contactPhone === "string" ? body.contactPhone.trim() : "";
+  if (contactPhone.length > 50) return null;
+
+  const contactNotes =
+    typeof body.contactNotes === "string" ? body.contactNotes.trim() : "";
+  if (contactNotes.length > 1000) return null;
+
   const rawLinks = Array.isArray(body.links) ? body.links : [];
   if (rawLinks.length > 3) return null;
   const links: { label: string; url: string }[] = [];
@@ -72,6 +87,9 @@ function parseSupplierInput(body: Record<string, unknown>): SupplierInput | null
     description,
     features,
     links,
+    contactEmail,
+    contactPhone,
+    contactNotes,
   };
 }
 

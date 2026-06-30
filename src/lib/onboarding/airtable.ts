@@ -206,6 +206,9 @@ const SUPPLIER_F = {
   active: "fldzPuJyXXsoCylu8",
   description: "fldfMbRzmRjw1ELhn",
   features: "fldeQDdMPLxL7PSMo",
+  contactEmail: "fldZb981na5QALuxE",
+  contactPhone: "fldHKcrVlRL89LN9F",
+  contactNotes: "flddSvIvCSGKsRPG2",
   link1Label: "fldxyeA1LQ6g5bVJ2",
   link1Url: "fldBHuSBLUusjDL5c",
   link2Label: "fldxgEvIbHm70srCL",
@@ -747,6 +750,9 @@ export async function fetchJourneyFromAirtable(
             .map((item) => item.trim())
             .filter(Boolean),
           links: supplierLinks(record),
+          contactEmail: str(record, SUPPLIER_F.contactEmail) || undefined,
+          contactPhone: str(record, SUPPLIER_F.contactPhone) || undefined,
+          contactNotes: str(record, SUPPLIER_F.contactNotes) || undefined,
         }))
         .sort(
           (a, b) =>
@@ -1451,6 +1457,9 @@ export async function fetchAdminSuppliers(): Promise<AdminSupplier[] | null> {
         description: str(record, SUPPLIER_F.description),
         features: str(record, SUPPLIER_F.features),
         links: supplierLinks(record),
+        contactEmail: str(record, SUPPLIER_F.contactEmail),
+        contactPhone: str(record, SUPPLIER_F.contactPhone),
+        contactNotes: str(record, SUPPLIER_F.contactNotes),
       }))
       .sort(
         (a, b) =>
@@ -1469,6 +1478,9 @@ export interface SupplierInput {
   /** Raw comma-delimited features string. */
   features: string;
   links: { label: string; url: string }[];
+  contactEmail: string;
+  contactPhone: string;
+  contactNotes: string;
 }
 
 function supplierFields(input: SupplierInput): Record<string, unknown> {
@@ -1477,6 +1489,9 @@ function supplierFields(input: SupplierInput): Record<string, unknown> {
     [SUPPLIER_F.category]: input.category,
     [SUPPLIER_F.description]: input.description,
     [SUPPLIER_F.features]: input.features,
+    [SUPPLIER_F.contactEmail]: input.contactEmail,
+    [SUPPLIER_F.contactPhone]: input.contactPhone,
+    [SUPPLIER_F.contactNotes]: input.contactNotes,
   };
   SUPPLIER_LINK_FIELDS.forEach(([labelField, urlField], index) => {
     const link = input.links[index];
