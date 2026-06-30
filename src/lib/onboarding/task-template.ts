@@ -90,17 +90,18 @@ export const TASK_TEMPLATE: Record<number, TemplateTask[]> = {
     {
       title: "Review and approve your homepage",
       description:
-        "First look at your new front door. Send your feedback or your approval in Messages and we'll see it straight away.",
+        "First look at your new front door. Upload a document with your feedback in Documents, or send it in Messages — whichever's easier.",
       audience: "client",
       owner: "client",
       dueOffsetDays: 26,
     },
     {
-      title: "Final content review",
-      description: "A last read-through of your pages before we move to training.",
+      title: "Set your target go-live date",
+      description:
+        "Pop in your target date under Your details, and we'll confirm it together.",
       audience: "client",
       owner: "client",
-      dueOffsetDays: 28,
+      dueOffsetDays: 27,
     },
     {
       title: "Build staging site & run internal design review",
@@ -138,19 +139,18 @@ export const TASK_TEMPLATE: Record<number, TemplateTask[]> = {
   ],
   4: [
     {
+      title: "Final content review",
+      description: "A last read-through of your pages before we flip the switch.",
+      audience: "client",
+      owner: "client",
+      dueOffsetDays: 39,
+    },
+    {
       title: "Test your booking flow end-to-end",
       description: "Walk through a test booking from a customer's point of view.",
       audience: "client",
       owner: "both",
       dueOffsetDays: 41,
-    },
-    {
-      title: "Set your target go-live date",
-      description:
-        "Pop in your target date under Your details, and we'll confirm it together.",
-      audience: "client",
-      owner: "client",
-      dueOffsetDays: 42,
     },
     {
       title: "Run pre-launch technical checks",

@@ -188,6 +188,13 @@ export interface PortalMessage {
   attachments?: MessageAttachment[];
 }
 
+/** A file already uploaded against an intake field, shown back in that field. */
+export interface IntakeUpload {
+  id: string;
+  name: string;
+  fileType: string;
+}
+
 export interface OnboardingJourney {
   /** Where this journey came from — drives the footer note. */
   source: "airtable" | "mock";
@@ -210,6 +217,8 @@ export interface OnboardingJourney {
   unreadMessages: number;
   /** Saved intake answers, keyed by field id (multi-selects comma-joined). */
   intakeResponses: Record<string, string>;
+  /** Files uploaded against each intake field, keyed by field id. */
+  intakeUploads: Record<string, IntakeUpload[]>;
   /** Training items this client has marked done. */
   trainingCompleted: string[];
   /** Latest confidence self-rating, if any. */

@@ -111,10 +111,15 @@ export async function fileToBase64(file: File): Promise<string | null> {
   }
 }
 
-/** Browser-side: send one screened file to /api/upload. True on success. */
+/**
+ * Browser-side: send one screened file to /api/upload. True on success.
+ * `field` tags the upload with the intake field it came from, so the form
+ * can show it back later.
+ */
 export async function postUpload(
   kind: "document" | "logo",
   file: File,
+  field?: string,
 ): Promise<boolean> {
   try {
     const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -134,6 +139,7 @@ export async function postUpload(
         name: file.name,
         contentType: file.type || undefined,
         data: base64,
+        ...(field ? { field } : {}),
       }),
     });
     return response.ok;

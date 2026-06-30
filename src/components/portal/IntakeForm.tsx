@@ -68,6 +68,7 @@ function Field({
   files,
   live,
   suppliers,
+  uploaded,
   onChange,
   onSelectionsChange,
   onFilesChange,
@@ -78,6 +79,7 @@ function Field({
   files: UploadedFile[];
   live: boolean;
   suppliers: PortalSupplier[];
+  uploaded: { id: string; name: string; fileType: string }[];
   onChange: (value: string) => void;
   onSelectionsChange: (selections: string[]) => void;
   onFilesChange: (files: UploadedFile[]) => void;
@@ -177,6 +179,7 @@ function Field({
           id={field.id}
           files={files}
           live={live}
+          initial={uploaded}
           onChange={onFilesChange}
         />
       )}
@@ -215,12 +218,14 @@ export function IntakeForm({
   responses,
   live,
   suppliers,
+  uploads = {},
   className = "",
 }: {
   sections: IntakeSection[];
   responses: Record<string, string>;
   live: boolean;
   suppliers: PortalSupplier[];
+  uploads?: Record<string, { id: string; name: string; fileType: string }[]>;
   className?: string;
 }) {
   const [values, setValues] = useState<Record<string, string>>(() => {
@@ -393,6 +398,7 @@ export function IntakeForm({
                           files={files[field.id] ?? []}
                           live={live}
                           suppliers={suppliers}
+                          uploaded={uploads[field.id] ?? []}
                           onChange={(value) =>
                             setValues((prev) => ({ ...prev, [field.id]: value }))
                           }

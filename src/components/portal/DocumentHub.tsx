@@ -91,6 +91,7 @@ export function DocumentHub({
   const [uploads, setUploads] = useState<UploadEntry[]>([]);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<"yours" | "ours">("yours");
 
   // Anything the client uploads is filed under this category server-side.
   const UPLOAD_CATEGORY = "Your uploads";
@@ -146,62 +147,89 @@ export function DocumentHub({
     }
   }
 
+  const tabs = [
+    { id: "yours" as const, label: "Your documents" },
+    { id: "ours" as const, label: "Travelgenix documents" },
+  ];
+
   return (
     <div className={className}>
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        onDragOver={(event) => {
-          event.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(event) => {
-          event.preventDefault();
-          setDragging(false);
-          handleFiles(event.dataTransfer.files);
-        }}
-        className={`press w-full cursor-pointer rounded-card border-2 border-dashed p-6 text-center transition-colors ${
-          dragging
-            ? "border-accent-bright bg-accent-soft/60"
-            : "border-border bg-surface-2/60 hover:border-border-strong"
-        }`}
+      <div
+        role="tablist"
+        aria-label="Document type"
+        className="inline-flex rounded-lg border border-border bg-surface-2/60 p-1"
       >
-        <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-bg-subtle text-fg-muted">
-          <UploadIcon className="h-5 w-5" />
-        </span>
-        <span className="mt-2.5 block text-[13px] font-semibold text-fg-muted">
-          Drop files here or click to upload
-        </span>
-        <span className="mt-1 block text-[11px] text-fg-faint">
-          Anything you upload here is filed under “Your documents” below
-        </span>
-      </button>
-      <input
-        ref={inputRef}
-        type="file"
-        multiple
-        accept={DOCUMENT_EXTENSIONS.map((extension) => `.${extension}`).join(",")}
-        onChange={(event) => {
-          handleFiles(event.target.files);
-          event.target.value = "";
-        }}
-        className="sr-only"
-        aria-label="Upload files"
-        tabIndex={-1}
-      />
-      <p aria-live="polite" className="mt-2 text-[12px] text-danger">
-        {error}
-      </p>
+        {tabs.map(({ id, label }) => {
+          const active = tab === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setTab(id)}
+              className={`press cursor-pointer rounded-md px-4 py-1.5 text-[13px] font-semibold transition-colors ${
+                active
+                  ? "bg-surface text-fg shadow-soft"
+                  : "text-fg-muted hover:text-fg"
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
 
-      <div className="mt-5 space-y-7">
-        <section>
-          <h2 className="text-[13px] font-bold text-fg">Your documents</h2>
-          <p className="mb-2 mt-0.5 text-[12px] text-fg-faint">
-            Everything you’ve sent us.
+      {tab === "yours" ? (
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(event) => {
+              event.preventDefault();
+              setDragging(false);
+              handleFiles(event.dataTransfer.files);
+            }}
+            className={`press w-full cursor-pointer rounded-card border-2 border-dashed p-6 text-center transition-colors ${
+              dragging
+                ? "border-accent-bright bg-accent-soft/60"
+                : "border-border bg-surface-2/60 hover:border-border-strong"
+            }`}
+          >
+            <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-bg-subtle text-fg-muted">
+              <UploadIcon className="h-5 w-5" />
+            </span>
+            <span className="mt-2.5 block text-[13px] font-semibold text-fg-muted">
+              Drop files here or click to upload
+            </span>
+            <span className="mt-1 block text-[11px] text-fg-faint">
+              Logo, brand assets, photos, your feedback — anything we need from you
+            </span>
+          </button>
+          <input
+            ref={inputRef}
+            type="file"
+            multiple
+            accept={DOCUMENT_EXTENSIONS.map((extension) => `.${extension}`).join(",")}
+            onChange={(event) => {
+              handleFiles(event.target.files);
+              event.target.value = "";
+            }}
+            className="sr-only"
+            aria-label="Upload files"
+            tabIndex={-1}
+          />
+          <p aria-live="polite" className="mt-2 text-[12px] text-danger">
+            {error}
           </p>
+
           {hasYourDocs ? (
-            <ul className="divide-y divide-border overflow-hidden rounded-card border border-border bg-surface shadow-soft">
+            <ul className="mt-4 divide-y divide-border overflow-hidden rounded-card border border-border bg-surface shadow-soft">
               {uploads.map((entry) => (
                 <DocRow
                   key={entry.meta.id}
@@ -222,18 +250,14 @@ export function DocumentHub({
               ))}
             </ul>
           ) : (
-            <p className="rounded-card border border-dashed border-border bg-surface-2/50 px-4 py-5 text-center text-[12px] text-fg-faint">
+            <p className="mt-4 rounded-card border border-dashed border-border bg-surface-2/50 px-4 py-5 text-center text-[12px] text-fg-faint">
               Nothing here yet. Anything you upload above appears here.
             </p>
           )}
-        </section>
-
-        {providedCategories.length > 0 && (
-          <section>
-            <h2 className="text-[13px] font-bold text-fg">From Travelgenix</h2>
-            <p className="mb-2 mt-0.5 text-[12px] text-fg-faint">
-              Guides, contracts and training documents we’ve shared with you.
-            </p>
+        </div>
+      ) : (
+        <div className="mt-4">
+          {providedCategories.length > 0 ? (
             <div className="space-y-4">
               {providedCategories.map((category) => (
                 <div key={category}>
@@ -256,9 +280,13 @@ export function DocumentHub({
                 </div>
               ))}
             </div>
-          </section>
-        )}
-      </div>
+          ) : (
+            <p className="rounded-card border border-dashed border-border bg-surface-2/50 px-4 py-5 text-center text-[12px] text-fg-faint">
+              Nothing here yet. Guides and documents from us will appear here.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

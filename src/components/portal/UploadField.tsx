@@ -24,11 +24,14 @@ export function UploadField({
   id,
   files,
   live,
+  initial = [],
   onChange,
 }: {
   id: string;
   files: UploadedFile[];
   live: boolean;
+  /** Files already uploaded against this field, shown read-only. */
+  initial?: { id: string; name: string; fileType: string }[];
   onChange: (files: UploadedFile[]) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -60,7 +63,7 @@ export function UploadField({
 
     const failed: string[] = [];
     for (const { meta, file } of accepted) {
-      const ok = await postUpload("logo", file);
+      const ok = await postUpload("logo", file, id);
       if (ok) {
         setStates((prev) => ({ ...prev, [meta.id]: "done" }));
       } else {
@@ -118,6 +121,29 @@ export function UploadField({
         <p aria-live="polite" className="mt-1.5 text-[12px] text-danger">
           {error}
         </p>
+      )}
+
+      {initial.length > 0 && (
+        <ul className="mt-2 space-y-1.5">
+          {initial.map((file) => (
+            <li
+              key={file.id}
+              className="flex items-center gap-2.5 rounded-md border border-border bg-surface px-3 py-2"
+            >
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-accent-soft text-[9px] font-bold text-accent">
+                {file.fileType}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13px] font-medium text-fg">
+                  {file.name}
+                </span>
+                <span className="block text-[11px] text-fg-faint">
+                  Saved to your documents
+                </span>
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
 
       {files.length > 0 && (

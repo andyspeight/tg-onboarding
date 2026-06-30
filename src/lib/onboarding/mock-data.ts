@@ -382,6 +382,7 @@ export function makeMockJourney(): OnboardingJourney {
     source: "mock",
     asOf,
     intakeResponses: {},
+    intakeUploads: {},
     trainingCompleted: [],
     confidence: null,
     messages: [
@@ -638,20 +639,20 @@ export function makeMockJourney(): OnboardingJourney {
           {
             id: "p3-review",
             title: "Review and approve your homepage",
-            description: "First look at your new front door. Send your feedback or your approval in Messages and we'll see it straight away.",
+            description: "First look at your new front door. Upload a document with your feedback in Documents, or send it in Messages — whichever's easier.",
             audience: "client",
             owner: "client",
             status: "todo",
             dueDate: day(8),
           },
           {
-            id: "p3-content",
-            title: "Final content review",
-            description: "A last read-through of your pages before we move to training.",
+            id: "p5-date",
+            title: "Set your target go-live date",
+            description: "Pop in your target date under Your details, and we'll confirm it together.",
             audience: "client",
             owner: "client",
             status: "todo",
-            dueDate: day(10),
+            dueDate: day(9),
           },
           {
             id: "p3-staging",
@@ -742,6 +743,15 @@ export function makeMockJourney(): OnboardingJourney {
         estimateLabel: "A few days",
         tasks: [
           {
+            id: "p5-content",
+            title: "Final content review",
+            description: "A last read-through of your pages before we flip the switch.",
+            audience: "client",
+            owner: "client",
+            status: "todo",
+            dueDate: day(22),
+          },
+          {
             id: "p5-test",
             title: "Test your booking flow end-to-end",
             description: "Walk through a test booking from a customer's point of view.",
@@ -749,15 +759,6 @@ export function makeMockJourney(): OnboardingJourney {
             owner: "both",
             status: "todo",
             dueDate: day(23),
-          },
-          {
-            id: "p5-date",
-            title: "Set your target go-live date",
-            description: "Pop in your target date under Your details, and we'll confirm it together.",
-            audience: "client",
-            owner: "client",
-            status: "todo",
-            dueDate: day(24),
           },
           {
             id: "p5-prelaunch",

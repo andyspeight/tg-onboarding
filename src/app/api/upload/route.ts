@@ -26,7 +26,16 @@ export async function POST(request: Request) {
     name?: unknown;
     contentType?: unknown;
     data?: unknown;
+    field?: unknown;
   };
+
+  // Optional intake-field tag: short, simple slug only.
+  const sourceField =
+    typeof body.field === "string" &&
+    body.field.length <= 60 &&
+    /^[a-z0-9-]+$/.test(body.field)
+      ? body.field
+      : undefined;
 
   const allowed =
     body.kind === "logo"
@@ -75,6 +84,7 @@ export async function POST(request: Request) {
       fileType: extension.toUpperCase(),
       contentType,
       base64: body.data,
+      sourceField,
     });
     await recordSignalAndTouch(config, clientId, "document-uploaded", name);
     revalidatePath("/documents");

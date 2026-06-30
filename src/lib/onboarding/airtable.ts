@@ -190,6 +190,7 @@ const DOC_F = {
   status: "fldPclJz8ghYQhNjR",
   added: "fldUG8S5AlO7YhXLC",
   file: "fldTGYzEH3L5bUOZ9",
+  sourceField: "fld1JeazEk7tRGwNK",
 };
 
 const NOTIF_F = {
@@ -680,6 +681,19 @@ export async function fetchJourneyFromAirtable(
             : "available",
     }));
 
+    // Uploads tagged with the intake field they came from, so the form can
+    // show the client what they've already sent rather than looking empty.
+    const intakeUploads: Record<string, { id: string; name: string; fileType: string }[]> = {};
+    for (const record of documentRecords) {
+      const fieldId = str(record, DOC_F.sourceField);
+      if (!fieldId) continue;
+      (intakeUploads[fieldId] ??= []).push({
+        id: record.id,
+        name: str(record, DOC_F.name),
+        fileType: str(record, DOC_F.fileType),
+      });
+    }
+
     const nowMs = Date.now();
     const notifications: PortalNotification[] = [...notificationRecords]
       .sort(
@@ -762,6 +776,7 @@ export async function fetchJourneyFromAirtable(
       messages,
       unreadMessages,
       intakeResponses,
+      intakeUploads,
       trainingCompleted,
       confidence: latestConfidence
         ? num(latestConfidence, CONFIDENCE_F.score)
@@ -1189,6 +1204,8 @@ export async function createClientDocumentWithFile(
     fileType: string;
     contentType: string;
     base64: string;
+    /** Intake field this upload belongs to, if any (e.g. "brand-logos"). */
+    sourceField?: string;
   },
 ): Promise<void> {
   const createResponse = await airtableFetch(config, TABLES.documents, {
@@ -1203,6 +1220,9 @@ export async function createClientDocumentWithFile(
             [DOC_F.fileType]: file.fileType,
             [DOC_F.status]: "received",
             [DOC_F.added]: ukToday(),
+            ...(file.sourceField
+              ? { [DOC_F.sourceField]: file.sourceField }
+              : {}),
           },
         },
       ],
