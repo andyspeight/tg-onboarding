@@ -30,13 +30,6 @@ export const TASK_TEMPLATE: Record<number, TemplateTask[]> = {
       dueOffsetDays: 1,
     },
     {
-      title: "Complete your business details form",
-      description: "Tells us about your brand, your customers and your goals.",
-      audience: "client",
-      owner: "client",
-      dueOffsetDays: 4,
-    },
-    {
       title: "Book your kickoff call",
       audience: "client",
       owner: "client",
@@ -49,6 +42,14 @@ export const TASK_TEMPLATE: Record<number, TemplateTask[]> = {
     },
   ],
   2: [
+    {
+      title: "Complete your business details form",
+      description:
+        "Your brand, contact details, suppliers and content — all in Your details.",
+      audience: "client",
+      owner: "client",
+      dueOffsetDays: 6,
+    },
     {
       title: "Upload your logo and brand assets",
       audience: "client",
@@ -83,25 +84,25 @@ export const TASK_TEMPLATE: Record<number, TemplateTask[]> = {
       dueOffsetDays: 21,
     },
     {
-      title: "Send us your About Us content",
-      description: "Your story, in your words. A few paragraphs is plenty.",
-      audience: "client",
-      owner: "client",
-      dueOffsetDays: 22,
-    },
-    {
       title: "Configure your search widgets",
       audience: "client",
       owner: "travelgenix",
-      dueOffsetDays: 23,
+      dueOffsetDays: 22,
     },
     {
       title: "Send us your supplier account details",
       description: "So we can connect your booking feeds. We'll never share them.",
       audience: "client",
       owner: "client",
-      dueOffsetDays: 24,
+      dueOffsetDays: 23,
       forPlans: ["Boost", "Ignite"],
+    },
+    {
+      title: "Confirm your payment gateway details",
+      description: "Sorted early so there's no scramble before launch.",
+      audience: "client",
+      owner: "client",
+      dueOffsetDays: 24,
     },
     {
       title: "Review and approve your homepage",
@@ -109,6 +110,13 @@ export const TASK_TEMPLATE: Record<number, TemplateTask[]> = {
       audience: "client",
       owner: "client",
       dueOffsetDays: 26,
+    },
+    {
+      title: "Final content review",
+      description: "A last read-through of your pages before we move to training.",
+      audience: "client",
+      owner: "client",
+      dueOffsetDays: 28,
     },
     {
       title: "Build staging site & run internal design review",
@@ -145,18 +153,6 @@ export const TASK_TEMPLATE: Record<number, TemplateTask[]> = {
     },
   ],
   5: [
-    {
-      title: "Final content review",
-      audience: "client",
-      owner: "client",
-      dueOffsetDays: 39,
-    },
-    {
-      title: "Confirm your payment gateway details",
-      audience: "client",
-      owner: "client",
-      dueOffsetDays: 40,
-    },
     {
       title: "Test your booking flow end-to-end",
       description: "Walk through a test booking from a customer's point of view.",

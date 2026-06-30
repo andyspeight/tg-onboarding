@@ -39,6 +39,26 @@ const FLIGHT_SUPPLIERS = [
   "Travel 2",
 ];
 
+/** Holiday specialisms a client can tag themselves with on the intake form. */
+const HOLIDAY_TYPES = [
+  "Beach & sun",
+  "City breaks",
+  "All-inclusive",
+  "Luxury",
+  "Family holidays",
+  "Honeymoons & weddings",
+  "Ocean cruise",
+  "River cruise",
+  "Ski & winter sports",
+  "Adventure & active",
+  "Touring & multi-centre",
+  "Tailor-made & bespoke",
+  "Escorted tours",
+  "Villas & self-catering",
+  "Safari & long-haul",
+  "Group travel",
+];
+
 /**
  * The smart intake form, adapted from the approved prototype. The Suppliers
  * section is tier-conditional: Spark clients don't manage their own supplier
@@ -186,13 +206,36 @@ export const INTAKE_SECTIONS: IntakeSection[] = [
   {
     id: "content",
     title: "Content & pages",
-    description: "What should your website include?",
+    description: "The words, destinations and images that make the site yours.",
     fields: [
+      {
+        id: "content-about",
+        label: "Your “About us” content",
+        type: "textarea",
+        placeholder:
+          "Your story, in your words. A few paragraphs is plenty — who you are, what you do, why people travel with you.",
+        helper:
+          "This goes on your About page. Don’t worry about polishing it — we’ll tidy it up.",
+      },
       {
         id: "content-destinations",
         label: "What destinations do you specialise in?",
         type: "textarea",
-        placeholder: "e.g. Mediterranean, Caribbean, ski...",
+        placeholder: "e.g. Mediterranean, Caribbean, Dubai, the Maldives...",
+        helper: "Give us up to 10 — your strongest sellers first.",
+      },
+      {
+        id: "content-holiday-types",
+        label: "What holiday types do you specialise in?",
+        type: "multiselect",
+        placeholder: "Select all that apply...",
+        options: HOLIDAY_TYPES,
+      },
+      {
+        id: "content-pages",
+        label: "Any specific pages you need?",
+        type: "textarea",
+        placeholder: "e.g. Group travel, weddings abroad, school trips...",
       },
       {
         id: "content-blog",
@@ -201,10 +244,79 @@ export const INTAKE_SECTIONS: IntakeSection[] = [
         options: ["Yes", "No", "Not sure yet"],
       },
       {
-        id: "content-pages",
-        label: "Any specific pages you need?",
+        id: "content-images",
+        label: "Upload any images you’d like used on your website",
+        type: "upload",
+        helper:
+          "Photos of your team, your shop, your destinations — anything that should appear on the site. JPG or PNG.",
+      },
+    ],
+  },
+  {
+    id: "contact",
+    title: "Contact & social",
+    description: "How customers reach you, and where to find you online.",
+    fields: [
+      {
+        id: "contact-phone",
+        label: "Public phone number",
+        type: "text",
+        placeholder: "e.g. 01202 123456",
+      },
+      {
+        id: "contact-email",
+        label: "Public email address",
+        type: "text",
+        placeholder: "e.g. hello@yourtravel.co.uk",
+      },
+      {
+        id: "contact-address",
+        label: "Business address",
         type: "textarea",
-        placeholder: "e.g. Group travel, weddings abroad...",
+        placeholder: "The address you’d like shown on your site, if any.",
+      },
+      {
+        id: "contact-social",
+        label: "Your social media links",
+        type: "textarea",
+        placeholder:
+          "Paste your Facebook, Instagram, TikTok, X or LinkedIn links — one per line.",
+        helper: "Add whichever you use and we’ll link them from your site.",
+      },
+      {
+        id: "contact-legal",
+        label: "Upload your legal documents",
+        type: "upload",
+        helper:
+          "Privacy policy, terms & conditions, booking conditions — whatever should live on the site. PDF or Word.",
+      },
+    ],
+  },
+  {
+    id: "ignite",
+    title: "B2B & membership",
+    description: "Extra areas available on your Ignite package.",
+    showForPlans: ["Ignite"],
+    fields: [
+      {
+        id: "ignite-area",
+        label: "Would you like a B2B or membership area?",
+        type: "select",
+        options: [
+          "B2B trade portal",
+          "Membership area",
+          "Both",
+          "Neither for now",
+          "Not sure — let’s discuss",
+        ],
+        helper:
+          "We can build a trade login for agents, a members’ area for customers, or both.",
+      },
+      {
+        id: "ignite-notes",
+        label: "Anything we should know about how you’ll use it?",
+        type: "textarea",
+        placeholder: "e.g. who logs in, and what they should see...",
       },
     ],
   },
@@ -315,7 +427,7 @@ export function makeMockJourney(): OnboardingJourney {
       {
         id: "n2",
         kind: "reminder",
-        text: "Your About Us content is due in 4 days",
+        text: "Add your About Us and destinations in Your details",
         whenLabel: "2h ago",
         read: false,
       },
@@ -422,15 +534,6 @@ export function makeMockJourney(): OnboardingJourney {
             dueDate: day(-17),
           },
           {
-            id: "p1-details",
-            title: "Complete your business details form",
-            description: "Tells us about your brand, your customers and your goals.",
-            audience: "client",
-            owner: "client",
-            status: "done",
-            dueDate: day(-14),
-          },
-          {
             id: "p1-kickoff",
             title: "Book your kickoff call",
             audience: "client",
@@ -472,6 +575,16 @@ export function makeMockJourney(): OnboardingJourney {
         status: "completed",
         estimateLabel: "About a week",
         tasks: [
+          {
+            id: "p2-details",
+            title: "Complete your business details form",
+            description:
+              "Your brand, contact details, suppliers and content — all in Your details.",
+            audience: "client",
+            owner: "client",
+            status: "done",
+            dueDate: day(-12),
+          },
           {
             id: "p2-logo",
             title: "Upload your logo and brand assets",
@@ -541,15 +654,6 @@ export function makeMockJourney(): OnboardingJourney {
             dueDate: day(3),
           },
           {
-            id: "p3-about",
-            title: "Send us your About Us content",
-            description: "Your story, in your words. A few paragraphs is plenty.",
-            audience: "client",
-            owner: "client",
-            status: "in-progress",
-            dueDate: day(4),
-          },
-          {
             id: "p3-widgets",
             title: "Configure your search widgets",
             audience: "client",
@@ -567,6 +671,15 @@ export function makeMockJourney(): OnboardingJourney {
             dueDate: day(6),
           },
           {
+            id: "p3-payments",
+            title: "Confirm your payment gateway details",
+            description: "Sorted early so there's no scramble before launch.",
+            audience: "client",
+            owner: "client",
+            status: "todo",
+            dueDate: day(7),
+          },
+          {
             id: "p3-review",
             title: "Review and approve your homepage",
             description: "First look at your new front door. Tell us what you think.",
@@ -574,6 +687,15 @@ export function makeMockJourney(): OnboardingJourney {
             owner: "client",
             status: "todo",
             dueDate: day(8),
+          },
+          {
+            id: "p3-content",
+            title: "Final content review",
+            description: "A last read-through of your pages before we move to training.",
+            audience: "client",
+            owner: "client",
+            status: "todo",
+            dueDate: day(10),
           },
           {
             id: "p3-staging",
@@ -663,22 +785,6 @@ export function makeMockJourney(): OnboardingJourney {
         status: "upcoming",
         estimateLabel: "A few days",
         tasks: [
-          {
-            id: "p5-content",
-            title: "Final content review",
-            audience: "client",
-            owner: "client",
-            status: "todo",
-            dueDate: day(21),
-          },
-          {
-            id: "p5-payments",
-            title: "Confirm your payment gateway details",
-            audience: "client",
-            owner: "client",
-            status: "todo",
-            dueDate: day(22),
-          },
           {
             id: "p5-test",
             title: "Test your booking flow end-to-end",
