@@ -88,6 +88,8 @@ export interface AdminClientSummary {
   unreadMessages: number;
   health: HealthLevel;
   reasons: string[];
+  /** The client's uploaded logo, shown as their dashboard avatar. */
+  logoUrl?: string;
 }
 
 export type TeamTaskUrgency = "overdue" | "urgent" | "upcoming";

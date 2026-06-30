@@ -1003,6 +1003,39 @@ function countUnreadFromClient(
   ).length;
 }
 
+/**
+ * The client's uploaded logo as an avatar URL, read from the brand-logos
+ * intake upload. Prefers an Airtable thumbnail; falls back to the file URL.
+ * Only images qualify (SVG/PNG/JPG), so non-image brand assets are skipped.
+ */
+function clientLogoUrl(
+  documentRecords: AirtableRecord[],
+  clientId: string,
+): string | undefined {
+  const logoDocs = documentRecords.filter(
+    (record) =>
+      links(record, DOC_F.client).includes(clientId) &&
+      str(record, DOC_F.sourceField) === "brand-logos",
+  );
+  for (const doc of logoDocs) {
+    const value = doc.fields[DOC_F.file];
+    if (!Array.isArray(value)) continue;
+    for (const item of value) {
+      if (typeof item !== "object" || item === null) continue;
+      const { url, type, thumbnails } = item as {
+        url?: unknown;
+        type?: unknown;
+        thumbnails?: { large?: { url?: unknown }; small?: { url?: unknown } };
+      };
+      if (typeof type !== "string" || !type.startsWith("image/")) continue;
+      const thumb = thumbnails?.large?.url ?? thumbnails?.small?.url;
+      if (typeof thumb === "string") return thumb;
+      if (typeof url === "string") return url;
+    }
+  }
+  return undefined;
+}
+
 /** One client's derived health summary — shared by snapshot and detail. */
 function summariseClient(
   clientRecord: AirtableRecord,
@@ -1010,6 +1043,7 @@ function summariseClient(
   phasesSorted: AirtableRecord[],
   responseRecords: AirtableRecord[],
   messageRecords: AirtableRecord[],
+  documentRecords: AirtableRecord[],
   today: string,
   nowMs: number,
 ): AdminClientSummary {
@@ -1105,6 +1139,7 @@ function summariseClient(
     unreadMessages: countUnreadFromClient(messageRecords, clientId),
     health,
     reasons,
+    logoUrl: clientLogoUrl(documentRecords, clientId),
   };
 }
 
@@ -1126,6 +1161,8 @@ export async function fetchAdminSnapshot(): Promise<AdminSnapshot | null> {
         listAll(config, TABLES.intakeResponses),
         listAll(config, TABLES.messages),
       ]);
+    // Second wave (keeps us inside Airtable's 5 req/sec) — logos live here.
+    const documentRecords = await listAll(config, TABLES.documents);
 
     const today = ukToday();
     const nowMs = Date.now();
@@ -1140,6 +1177,7 @@ export async function fetchAdminSnapshot(): Promise<AdminSnapshot | null> {
         phasesSorted,
         responseRecords,
         messageRecords,
+        documentRecords,
         today,
         nowMs,
       ),
@@ -1308,6 +1346,7 @@ export async function fetchAdminClientDetail(
       phasesSorted,
       responseRecords,
       messageRecords,
+      documentRecords,
       today,
       nowMs,
     );
@@ -2046,12 +2085,14 @@ export async function runAutomation(): Promise<AutomationRunResult | null> {
     const clientId = clientRecord.id;
     const email = str(clientRecord, CLIENT_F.email);
     const firstName = str(clientRecord, CLIENT_F.contactName).split(" ")[0] || "there";
-    // Empty responses/messages: the engine's rules don't use intake or
-    // unread counts, so skipping those reads keeps the cron light.
+    // Empty responses/messages/documents: the engine's rules don't use
+    // intake, unread counts or logos, so skipping those reads keeps the
+    // cron light.
     const summary = summariseClient(
       clientRecord,
       taskRecords,
       phasesSorted,
+      [],
       [],
       [],
       today,

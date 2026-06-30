@@ -24,6 +24,42 @@ const OWNER_LABEL: Record<string, string> = {
 
 type TabId = "journey" | "documents" | "intake" | "activity" | "messages";
 
+/**
+ * Where clicking a completed client task should jump — to the answer they
+ * typed (Intake) or the file they sent (Documents). Tasks with no clear
+ * artefact (calls, internal work) aren't linked.
+ */
+function taskJump(task: {
+  title: string;
+  audience: string;
+  owner: string;
+}): TabId | null {
+  if (task.audience === "internal" || task.owner === "travelgenix") return null;
+  const t = task.title.toLowerCase();
+  if (/details|form|domain|go-live date|destination/.test(t)) return "intake";
+  if (/logo|brand|product content|image|about|supplier|feedback|review and approve/.test(t)) {
+    return "documents";
+  }
+  return null;
+}
+
+/** Where clicking a Recent Activity row should jump. */
+function signalJump(signal: string): TabId | null {
+  const s = signal.toLowerCase();
+  if (s.includes("document")) return "documents";
+  if (s.includes("intake")) return "intake";
+  if (s.includes("task")) return "journey";
+  return null;
+}
+
+const JUMP_LABEL: Record<TabId, string> = {
+  intake: "View answer",
+  documents: "View files",
+  journey: "View task",
+  activity: "View",
+  messages: "View",
+};
+
 /** Staff view of one client: the whole journey, internal tasks included. */
 export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
   const { summary } = detail;
@@ -45,33 +81,47 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
     <div className="space-y-6">
       <section className="rounded-card border border-border bg-surface p-5 shadow-soft">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="flex items-center gap-2.5">
-              <span
-                className={`h-2.5 w-2.5 rounded-full ${HEALTH_DOT[summary.health]}`}
-                title={HEALTH_LABEL[summary.health]}
+          <div className="flex items-start gap-3">
+            {summary.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={summary.logoUrl}
+                alt=""
+                className="h-10 w-10 shrink-0 rounded-md border border-border bg-white object-contain"
               />
-              <span className="text-lg font-extrabold tracking-tight text-fg">
-                {summary.company}
+            ) : (
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent-soft text-sm font-bold text-accent">
+                {summary.company.charAt(0).toUpperCase()}
               </span>
-              {summary.plan && (
-                <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-semibold text-accent">
-                  {summary.plan}
-                </span>
-              )}
-            </p>
-            <p className="mt-1 text-[13px] text-fg-muted">
-              {summary.contactName}
-              {detail.contactEmail ? ` · ${detail.contactEmail}` : ""}
-              {detail.startedAt
-                ? ` · Started ${formatShortDate(detail.startedAt)} (day ${summary.dayCount})`
-                : ""}
-            </p>
-            {summary.reasons.length > 0 && (
-              <p className="mt-1.5 text-[13px] font-medium text-warning">
-                {summary.reasons.join(". ")}.
-              </p>
             )}
+            <div>
+              <p className="flex items-center gap-2.5">
+                <span
+                  className={`h-2.5 w-2.5 rounded-full ${HEALTH_DOT[summary.health]}`}
+                  title={HEALTH_LABEL[summary.health]}
+                />
+                <span className="text-lg font-extrabold tracking-tight text-fg">
+                  {summary.company}
+                </span>
+                {summary.plan && (
+                  <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-semibold text-accent">
+                    {summary.plan}
+                  </span>
+                )}
+              </p>
+              <p className="mt-1 text-[13px] text-fg-muted">
+                {summary.contactName}
+                {detail.contactEmail ? ` · ${detail.contactEmail}` : ""}
+                {detail.startedAt
+                  ? ` · Started ${formatShortDate(detail.startedAt)} (day ${summary.dayCount})`
+                  : ""}
+              </p>
+              {summary.reasons.length > 0 && (
+                <p className="mt-1.5 text-[13px] font-medium text-warning">
+                  {summary.reasons.join(". ")}.
+                </p>
+              )}
+            </div>
           </div>
           <div className="w-full max-w-[220px]">
             <div className="flex items-baseline justify-between">
@@ -149,35 +199,53 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
                   {phase.number}. {phase.title}
                 </p>
                 <ul className="divide-y divide-border">
-                  {phase.tasks.map((task) => (
-                    <li key={task.id} className="flex items-center gap-3 px-4 py-2.5">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] font-medium text-fg">
-                          {task.title}
-                          {task.optional && (
-                            <span className="ml-2 text-[10px] font-normal text-fg-faint">
-                              optional
+                  {phase.tasks.map((task) => {
+                    const jump = taskJump(task);
+                    return (
+                      <li key={task.id}>
+                        <div
+                          className={`flex items-center gap-3 px-4 py-2.5 ${
+                            jump ? "transition-colors hover:bg-surface-2" : ""
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[13px] font-medium text-fg">
+                              {task.title}
+                              {task.optional && (
+                                <span className="ml-2 text-[10px] font-normal text-fg-faint">
+                                  optional
+                                </span>
+                              )}
+                            </p>
+                            <p className="mt-0.5 text-[11px] text-fg-faint">
+                              {OWNER_LABEL[task.owner]}
+                              {task.audience === "internal" ? " · internal" : ""}
+                              {task.dueDate ? ` · due ${formatShortDate(task.dueDate)}` : ""}
+                            </p>
+                          </div>
+                          {jump && (
+                            <button
+                              type="button"
+                              onClick={() => setTab(jump)}
+                              className="press shrink-0 cursor-pointer rounded-md border border-border px-2 py-0.5 text-[10px] font-medium text-accent transition-colors hover:bg-accent-soft"
+                            >
+                              {JUMP_LABEL[jump]} →
+                            </button>
+                          )}
+                          {task.audience === "internal" && (
+                            <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-fg-faint">
+                              Internal
                             </span>
                           )}
-                        </p>
-                        <p className="mt-0.5 text-[11px] text-fg-faint">
-                          {OWNER_LABEL[task.owner]}
-                          {task.audience === "internal" ? " · internal" : ""}
-                          {task.dueDate ? ` · due ${formatShortDate(task.dueDate)}` : ""}
-                        </p>
-                      </div>
-                      {task.audience === "internal" && (
-                        <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-fg-faint">
-                          Internal
-                        </span>
-                      )}
-                      <span
-                        className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${STATUS_CLS[task.status]}`}
-                      >
-                        {task.status === "in-progress" ? "In progress" : task.status === "done" ? "Done" : "To do"}
-                      </span>
-                    </li>
-                  ))}
+                          <span
+                            className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${STATUS_CLS[task.status]}`}
+                          >
+                            {task.status === "in-progress" ? "In progress" : task.status === "done" ? "Done" : "To do"}
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  })}
                   {phase.tasks.length === 0 && (
                     <li className="px-4 py-3 text-[12px] text-fg-faint">No tasks.</li>
                   )}
@@ -255,15 +323,31 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
             <h2 className="mb-2.5 text-[13px] font-bold text-fg">Recent activity</h2>
             <div className="overflow-hidden rounded-card border border-border bg-surface shadow-soft">
               <ul className="divide-y divide-border">
-                {detail.signals.map((signal) => (
-                  <li key={signal.id} className="px-4 py-2.5">
-                    <p className="text-[12px] font-medium text-fg">{signal.signal}</p>
-                    <p className="text-[11px] text-fg-faint">
-                      {signal.detail ? `${signal.detail} · ` : ""}
-                      {signal.whenLabel}
-                    </p>
-                  </li>
-                ))}
+                {detail.signals.map((signal) => {
+                  const jump = signalJump(signal.signal);
+                  return (
+                    <li key={signal.id}>
+                      <div className="flex items-center gap-3 px-4 py-2.5">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[12px] font-medium text-fg">{signal.signal}</p>
+                          <p className="text-[11px] text-fg-faint">
+                            {signal.detail ? `${signal.detail} · ` : ""}
+                            {signal.whenLabel}
+                          </p>
+                        </div>
+                        {jump && (
+                          <button
+                            type="button"
+                            onClick={() => setTab(jump)}
+                            className="press shrink-0 cursor-pointer rounded-md border border-border px-2 py-0.5 text-[10px] font-medium text-accent transition-colors hover:bg-accent-soft"
+                          >
+                            {JUMP_LABEL[jump]} →
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
                 {detail.signals.length === 0 && (
                   <li className="px-4 py-6 text-center text-[12px] text-fg-muted">
                     No activity recorded yet.

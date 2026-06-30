@@ -29,6 +29,30 @@ const FILTERS: { id: HealthLevel | "all"; label: string }[] = [
   { id: "red", label: "At risk" },
 ];
 
+function ClientAvatar({
+  logoUrl,
+  company,
+}: {
+  logoUrl?: string;
+  company: string;
+}) {
+  if (logoUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={logoUrl}
+        alt=""
+        className="h-8 w-8 shrink-0 rounded-md border border-border bg-white object-contain"
+      />
+    );
+  }
+  return (
+    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent-soft text-[12px] font-bold text-accent">
+      {company.charAt(0).toUpperCase()}
+    </span>
+  );
+}
+
 function HealthDot({ health }: { health: HealthLevel }) {
   const meta = HEALTH_META[health];
   return (
@@ -178,6 +202,7 @@ export function Overview({ clients }: { clients: AdminClientSummary[] }) {
                 className="flex flex-wrap items-center gap-3 px-4 py-3 sm:flex-nowrap"
               >
                 <HealthDot health={client.health} />
+                <ClientAvatar logoUrl={client.logoUrl} company={client.company} />
                 <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-2 truncate text-[13px] font-semibold text-fg">
                     {client.company}
