@@ -27,14 +27,15 @@ Phase 1 feature-complete and verified end to end on production (10 Jun 2026): po
 - **Anti-wilting mechanics are core, not nice-to-have:** visible progress bar; task-specific nudges (never generic nag emails); engagement tracking with early-warning alerts when a client goes quiet; **go-live gated on the client self-rating their confidence ≥ 7/10**.
 
 ## Phase 1 scope (current)
-A branded, client-facing **welcome portal** that walks a new client through the seven-phase journey:
-1. Welcome & Kickoff
-2. Content & Branding Collection
-3. Website Build
-4. Training & Familiarisation
-5. Go-Live Prep
-6. First 30 Days Live
-7. Growth & Independence
+A branded, client-facing **welcome portal** that walks a new client through the six-phase journey:
+1. Content & Branding Collection
+2. Website Build
+3. Training & Familiarisation
+4. Go-Live Prep
+5. First 30 Days Live
+6. Growth & Independence
+
+> Welcome & Kickoff was retired (30 Jun 2026, Andy's call on AM feedback): clients only reach the portal after the welcome/kickoff calls, so that phase added nothing to the client view. The journey now opens at Content & Branding Collection.
 
 Each phase shows client-facing tasks, a **progress bar**, **checklists**, and **embedded training** (video/article slots). The **7/10 confidence gate** sits before Go-Live. Internal-only tasks stay hidden from the client view (they belong to Phase 2's dashboard).
 

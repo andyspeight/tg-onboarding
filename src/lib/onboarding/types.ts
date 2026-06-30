@@ -104,6 +104,7 @@ export interface PortalNotification {
 export type IntakeFieldType =
   | "text"
   | "textarea"
+  | "date"
   | "select"
   | "multiselect"
   | "upload";

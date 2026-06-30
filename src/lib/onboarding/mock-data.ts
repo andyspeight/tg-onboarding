@@ -322,8 +322,8 @@ export const INTAKE_SECTIONS: IntakeSection[] = [
   },
   {
     id: "domain",
-    title: "Domain & technical",
-    description: "Getting your web address sorted.",
+    title: "Domain & launch",
+    description: "Your web address, and when you'd like to go live.",
     fields: [
       {
         id: "domain-name",
@@ -350,6 +350,13 @@ export const INTAKE_SECTIONS: IntakeSection[] = [
         label: "Do you have email on this domain already?",
         type: "select",
         options: ["Yes", "No"],
+      },
+      {
+        id: "target-go-live",
+        label: "Your target go-live date",
+        type: "date",
+        helper:
+          "A date you'd love to be live by — pencilled in, not fixed. We'll confirm it together nearer the time.",
       },
     ],
   },
@@ -515,59 +522,8 @@ export function makeMockJourney(): OnboardingJourney {
     ],
     phases: [
       {
-        id: "phase-1",
-        number: 1,
-        slug: "welcome-kickoff",
-        title: "Welcome & Kickoff",
-        summary:
-          "Say hello, meet the person looking after you, and tell us a little about how you work.",
-        status: "completed",
-        estimateLabel: "Day one",
-        tasks: [
-          {
-            id: "p1-call",
-            title: "Welcome call with Andy",
-            description: "A quick hello and a walk through what happens next.",
-            audience: "client",
-            owner: "both",
-            status: "done",
-            dueDate: day(-17),
-          },
-          {
-            id: "p1-kickoff",
-            title: "Book your kickoff call",
-            audience: "client",
-            owner: "client",
-            status: "done",
-            dueDate: day(-13),
-          },
-          {
-            id: "p1-provision",
-            title: "Provision client workspace",
-            audience: "internal",
-            owner: "travelgenix",
-            status: "done",
-          },
-        ],
-        training: [
-          {
-            id: "p1-vid",
-            type: "video",
-            title: "Welcome to Travelgenix",
-            description: "A two-minute hello and a look at what's ahead.",
-            durationLabel: "2 min watch",
-          },
-          {
-            id: "p1-art",
-            type: "article",
-            title: "How your onboarding works",
-            durationLabel: "3 min read",
-          },
-        ],
-      },
-      {
         id: "phase-2",
-        number: 2,
+        number: 1,
         slug: "content-branding",
         title: "Content & Branding Collection",
         summary:
@@ -636,7 +592,7 @@ export function makeMockJourney(): OnboardingJourney {
       },
       {
         id: "phase-3",
-        number: 3,
+        number: 2,
         slug: "website-build",
         title: "Website Build",
         summary:
@@ -664,7 +620,7 @@ export function makeMockJourney(): OnboardingJourney {
           {
             id: "p3-suppliers",
             title: "Send us your supplier account details",
-            description: "So we can connect your booking feeds. We'll never share them.",
+            description: "Send these to us securely in Messages so we can connect your booking feeds. We'll never share them.",
             audience: "client",
             owner: "client",
             status: "todo",
@@ -682,7 +638,7 @@ export function makeMockJourney(): OnboardingJourney {
           {
             id: "p3-review",
             title: "Review and approve your homepage",
-            description: "First look at your new front door. Tell us what you think.",
+            description: "First look at your new front door. Send your feedback or your approval in Messages and we'll see it straight away.",
             audience: "client",
             owner: "client",
             status: "todo",
@@ -717,7 +673,7 @@ export function makeMockJourney(): OnboardingJourney {
       },
       {
         id: "phase-4",
-        number: 4,
+        number: 3,
         slug: "training-familiarisation",
         title: "Training & Familiarisation",
         summary:
@@ -777,7 +733,7 @@ export function makeMockJourney(): OnboardingJourney {
       },
       {
         id: "phase-5",
-        number: 5,
+        number: 4,
         slug: "go-live-prep",
         title: "Go-Live Prep",
         summary:
@@ -796,7 +752,8 @@ export function makeMockJourney(): OnboardingJourney {
           },
           {
             id: "p5-date",
-            title: "Set your go-live date",
+            title: "Set your target go-live date",
+            description: "Pop in your target date under Your details, and we'll confirm it together.",
             audience: "client",
             owner: "client",
             status: "todo",
@@ -828,7 +785,7 @@ export function makeMockJourney(): OnboardingJourney {
       },
       {
         id: "phase-6",
-        number: 6,
+        number: 5,
         slug: "first-30-days",
         title: "First 30 Days Live",
         summary:
@@ -879,7 +836,7 @@ export function makeMockJourney(): OnboardingJourney {
       },
       {
         id: "phase-7",
-        number: 7,
+        number: 6,
         slug: "growth-independence",
         title: "Growth & Independence",
         summary:

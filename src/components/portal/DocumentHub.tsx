@@ -92,7 +92,16 @@ export function DocumentHub({
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const categories = [...new Set(documents.map((doc) => doc.category))];
+  // Anything the client uploads is filed under this category server-side.
+  const UPLOAD_CATEGORY = "Your uploads";
+  const yourDocs = documents.filter((doc) => doc.category === UPLOAD_CATEGORY);
+  const providedDocs = documents.filter(
+    (doc) => doc.category !== UPLOAD_CATEGORY,
+  );
+  const providedCategories = [
+    ...new Set(providedDocs.map((doc) => doc.category)),
+  ];
+  const hasYourDocs = uploads.length > 0 || yourDocs.length > 0;
 
   function setEntryState(id: string, state: UploadEntry["state"]) {
     setUploads((prev) =>
@@ -165,7 +174,7 @@ export function DocumentHub({
           Drop files here or click to upload
         </span>
         <span className="mt-1 block text-[11px] text-fg-faint">
-          Logo, brand assets, photos, anything we need from you
+          Anything you upload here is filed under “Your documents” below
         </span>
       </button>
       <input
@@ -185,12 +194,13 @@ export function DocumentHub({
         {error}
       </p>
 
-      <div className="mt-4 space-y-5">
-        {uploads.length > 0 && (
-          <section>
-            <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-fg-muted">
-              Your uploads
-            </h2>
+      <div className="mt-5 space-y-7">
+        <section>
+          <h2 className="text-[13px] font-bold text-fg">Your documents</h2>
+          <p className="mb-2 mt-0.5 text-[12px] text-fg-faint">
+            Everything you’ve sent us.
+          </p>
+          {hasYourDocs ? (
             <ul className="divide-y divide-border overflow-hidden rounded-card border border-border bg-surface shadow-soft">
               {uploads.map((entry) => (
                 <DocRow
@@ -201,30 +211,53 @@ export function DocumentHub({
                   status={entry.state === "uploading" ? "uploading" : "received"}
                 />
               ))}
+              {yourDocs.map((doc) => (
+                <DocRow
+                  key={doc.id}
+                  name={doc.name}
+                  fileType={doc.fileType}
+                  meta={`Added ${formatShortDate(doc.addedAt)}`}
+                  status={doc.status}
+                />
+              ))}
             </ul>
+          ) : (
+            <p className="rounded-card border border-dashed border-border bg-surface-2/50 px-4 py-5 text-center text-[12px] text-fg-faint">
+              Nothing here yet. Anything you upload above appears here.
+            </p>
+          )}
+        </section>
+
+        {providedCategories.length > 0 && (
+          <section>
+            <h2 className="text-[13px] font-bold text-fg">From Travelgenix</h2>
+            <p className="mb-2 mt-0.5 text-[12px] text-fg-faint">
+              Guides, contracts and training documents we’ve shared with you.
+            </p>
+            <div className="space-y-4">
+              {providedCategories.map((category) => (
+                <div key={category}>
+                  <h3 className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-fg-muted">
+                    {category}
+                  </h3>
+                  <ul className="divide-y divide-border overflow-hidden rounded-card border border-border bg-surface shadow-soft">
+                    {providedDocs
+                      .filter((doc) => doc.category === category)
+                      .map((doc) => (
+                        <DocRow
+                          key={doc.id}
+                          name={doc.name}
+                          fileType={doc.fileType}
+                          meta={`${doc.status === "pending" ? "Expected" : "Added"} ${formatShortDate(doc.addedAt)}`}
+                          status={doc.status}
+                        />
+                      ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
           </section>
         )}
-
-        {categories.map((category) => (
-          <section key={category}>
-            <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-fg-muted">
-              {category}
-            </h2>
-            <ul className="divide-y divide-border overflow-hidden rounded-card border border-border bg-surface shadow-soft">
-              {documents
-                .filter((doc) => doc.category === category)
-                .map((doc) => (
-                  <DocRow
-                    key={doc.id}
-                    name={doc.name}
-                    fileType={doc.fileType}
-                    meta={`${doc.status === "pending" ? "Expected" : "Added"} ${formatShortDate(doc.addedAt)}`}
-                    status={doc.status}
-                  />
-                ))}
-            </ul>
-          </section>
-        ))}
       </div>
     </div>
   );

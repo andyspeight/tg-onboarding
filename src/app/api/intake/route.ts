@@ -30,6 +30,14 @@ function normaliseValue(field: IntakeField, value: unknown): string | null {
       return typeof value === "string" && value.length <= TEXTAREA_MAX
         ? value.trim()
         : null;
+    case "date": {
+      if (typeof value !== "string") return null;
+      if (value === "") return "";
+      // Native date inputs submit ISO YYYY-MM-DD; verify it's a real date.
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+      const parsed = new Date(`${value}T00:00:00Z`);
+      return Number.isNaN(parsed.getTime()) ? null : value;
+    }
     case "select":
       if (typeof value !== "string") return null;
       if (value === "") return "";

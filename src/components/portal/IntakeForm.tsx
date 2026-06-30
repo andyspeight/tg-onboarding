@@ -130,6 +130,16 @@ function Field({
           className={`resize-y py-2.5 ${inputClasses}`}
         />
       )}
+      {field.type === "date" && (
+        <input
+          id={field.id}
+          type="date"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          required={field.required}
+          className={`h-11 cursor-pointer ${inputClasses}`}
+        />
+      )}
       {field.type === "select" && (
         <select
           id={field.id}

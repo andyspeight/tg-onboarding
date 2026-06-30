@@ -19,36 +19,18 @@ export interface TemplateTask {
   forPlans?: string[];
 }
 
-/** Keyed by phase number (1–7). */
+/** Keyed by phase number (1–6). Welcome & Kickoff was retired — clients only
+ * reach the portal after those calls, so the journey now opens at Content &
+ * Branding Collection. */
 export const TASK_TEMPLATE: Record<number, TemplateTask[]> = {
   1: [
-    {
-      title: "Welcome call with Andy",
-      description: "A quick hello and a walk through what happens next.",
-      audience: "client",
-      owner: "both",
-      dueOffsetDays: 1,
-    },
-    {
-      title: "Book your kickoff call",
-      audience: "client",
-      owner: "client",
-      dueOffsetDays: 5,
-    },
-    {
-      title: "Provision client workspace",
-      audience: "internal",
-      owner: "travelgenix",
-    },
-  ],
-  2: [
     {
       title: "Complete your business details form",
       description:
         "Your brand, contact details, suppliers and content — all in Your details.",
       audience: "client",
       owner: "client",
-      dueOffsetDays: 6,
+      dueOffsetDays: 3,
     },
     {
       title: "Upload your logo and brand assets",
@@ -75,7 +57,7 @@ export const TASK_TEMPLATE: Record<number, TemplateTask[]> = {
       owner: "travelgenix",
     },
   ],
-  3: [
+  2: [
     {
       title: "Build your homepage draft",
       description: "We're on this. You'll get a preview link the moment it's ready.",
@@ -91,7 +73,8 @@ export const TASK_TEMPLATE: Record<number, TemplateTask[]> = {
     },
     {
       title: "Send us your supplier account details",
-      description: "So we can connect your booking feeds. We'll never share them.",
+      description:
+        "Send these to us securely in Messages so we can connect your booking feeds. We'll never share them.",
       audience: "client",
       owner: "client",
       dueOffsetDays: 23,
@@ -106,7 +89,8 @@ export const TASK_TEMPLATE: Record<number, TemplateTask[]> = {
     },
     {
       title: "Review and approve your homepage",
-      description: "First look at your new front door. Tell us what you think.",
+      description:
+        "First look at your new front door. Send your feedback or your approval in Messages and we'll see it straight away.",
       audience: "client",
       owner: "client",
       dueOffsetDays: 26,
@@ -124,7 +108,7 @@ export const TASK_TEMPLATE: Record<number, TemplateTask[]> = {
       owner: "travelgenix",
     },
   ],
-  4: [
+  3: [
     {
       title: "Complete the Travelgenix University core modules",
       audience: "client",
@@ -152,7 +136,7 @@ export const TASK_TEMPLATE: Record<number, TemplateTask[]> = {
       optional: true,
     },
   ],
-  5: [
+  4: [
     {
       title: "Test your booking flow end-to-end",
       description: "Walk through a test booking from a customer's point of view.",
@@ -161,7 +145,9 @@ export const TASK_TEMPLATE: Record<number, TemplateTask[]> = {
       dueOffsetDays: 41,
     },
     {
-      title: "Set your go-live date",
+      title: "Set your target go-live date",
+      description:
+        "Pop in your target date under Your details, and we'll confirm it together.",
       audience: "client",
       owner: "client",
       dueOffsetDays: 42,
@@ -172,7 +158,7 @@ export const TASK_TEMPLATE: Record<number, TemplateTask[]> = {
       owner: "travelgenix",
     },
   ],
-  6: [
+  5: [
     {
       title: "Publish your first promotion",
       audience: "client",
@@ -197,7 +183,7 @@ export const TASK_TEMPLATE: Record<number, TemplateTask[]> = {
       owner: "travelgenix",
     },
   ],
-  7: [
+  6: [
     {
       title: "Explore the advanced marketing tools",
       audience: "client",
