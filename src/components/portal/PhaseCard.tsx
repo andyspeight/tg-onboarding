@@ -14,6 +14,8 @@ interface PhaseCardProps {
   asOf: string;
   index: number;
   onCycleTask: (taskId: string) => void;
+  /** When shown alone (e.g. in a tab), start expanded even if complete. */
+  alwaysExpanded?: boolean;
 }
 
 /**
@@ -28,10 +30,11 @@ export function PhaseCard({
   asOf,
   index,
   onCycleTask,
+  alwaysExpanded = false,
 }: PhaseCardProps) {
   const isComplete = phase.status === "completed";
   const isActive = phase.status === "active";
-  const [collapsed, setCollapsed] = useState(isComplete);
+  const [collapsed, setCollapsed] = useState(alwaysExpanded ? false : isComplete);
   const panelId = `phase-panel-${phase.number}`;
 
   return (

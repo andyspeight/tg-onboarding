@@ -30,7 +30,8 @@ interface WelcomeHeroProps {
   phasesComplete: number;
   phaseCount: number;
   activePhaseTitle?: string;
-  activePhaseHref?: string;
+  /** Jump to (select) the active phase tab on the Action Plan. */
+  onJumpToActive?: () => void;
 }
 
 /**
@@ -48,7 +49,7 @@ export function WelcomeHero({
   phasesComplete,
   phaseCount,
   activePhaseTitle,
-  activePhaseHref,
+  onJumpToActive,
 }: WelcomeHeroProps) {
   const firstName = contactName.split(" ")[0];
 
@@ -81,10 +82,11 @@ export function WelcomeHero({
         </p>
       )}
 
-      {activePhaseTitle && activePhaseHref && (
-        <a
-          href={activePhaseHref}
-          className="mt-4 inline-flex items-center gap-2.5 rounded-full bg-accent-soft py-1.5 pl-3 pr-3.5 text-[13px] font-medium text-accent transition-colors hover:bg-accent-soft/70"
+      {activePhaseTitle && onJumpToActive && (
+        <button
+          type="button"
+          onClick={onJumpToActive}
+          className="press mt-4 inline-flex cursor-pointer items-center gap-2.5 rounded-full bg-accent-soft py-1.5 pl-3 pr-3.5 text-[13px] font-medium text-accent transition-colors hover:bg-accent-soft/70"
         >
           <span aria-hidden className="relative flex h-2 w-2">
             <span
@@ -94,7 +96,7 @@ export function WelcomeHero({
             <span className="relative h-2 w-2 rounded-full bg-accent-bright" />
           </span>
           Happening now: {activePhaseTitle}
-        </a>
+        </button>
       )}
 
       <div className="mt-6">

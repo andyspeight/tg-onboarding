@@ -14,6 +14,7 @@ import { QuickStats } from "./QuickStats";
 import { FilterBar, type TaskFilter } from "./FilterBar";
 import { PhaseCard } from "./PhaseCard";
 import { ConfidenceGate } from "./ConfidenceGate";
+import { CheckIcon } from "@/components/icons";
 
 const CYCLE: Record<TaskStatus, TaskStatus> = {
   todo: "in-progress",
@@ -38,6 +39,10 @@ export function Portal({ journey }: { journey: OnboardingJourney }) {
     journey.confidence,
   );
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [selectedPhaseId, setSelectedPhaseId] = useState<string>(
+    () =>
+      currentPhase(journey.phases)?.id ?? journey.phases[0]?.id ?? "",
+  );
 
   const overall = useMemo(() => overallProgress(phases), [phases]);
   const completeCount = useMemo(() => phasesComplete(phases), [phases]);
@@ -104,21 +109,21 @@ export function Portal({ journey }: { journey: OnboardingJourney }) {
       .catch(() => setSaveError(SAVE_ERROR));
   }
 
-  // Owner filter, prototype-style: shared tasks show in both views, and a
-  // phase with nothing matching drops out of the list entirely.
-  const visiblePhases = useMemo(() => {
-    if (filter === "all") return phases;
-    return phases
-      .map((phase) => ({
-        ...phase,
-        tasks: phase.tasks.filter((task) =>
-          filter === "client"
-            ? task.owner !== "travelgenix"
-            : task.owner !== "client",
-        ),
-      }))
-      .filter((phase) => phase.tasks.length > 0);
-  }, [phases, filter]);
+  // The phase whose tab is open. Owner filter is applied to its tasks;
+  // shared tasks show in both views.
+  const selectedPhase =
+    phases.find((phase) => phase.id === selectedPhaseId) ?? phases[0] ?? null;
+  const selectedForRender =
+    selectedPhase && filter !== "all"
+      ? {
+          ...selectedPhase,
+          tasks: selectedPhase.tasks.filter((task) =>
+            filter === "client"
+              ? task.owner !== "travelgenix"
+              : task.owner !== "client",
+          ),
+        }
+      : selectedPhase;
 
   return (
     <div className="space-y-6">
@@ -131,7 +136,9 @@ export function Portal({ journey }: { journey: OnboardingJourney }) {
         phasesComplete={completeCount}
         phaseCount={phases.length}
         activePhaseTitle={active?.title}
-        activePhaseHref={active ? `#phase-${active.number}` : undefined}
+        onJumpToActive={
+          active ? () => setSelectedPhaseId(active.id) : undefined
+        }
       />
 
       <QuickStats stats={stats} />
@@ -142,32 +149,74 @@ export function Portal({ journey }: { journey: OnboardingJourney }) {
         {saveError}
       </p>
 
-      <ol className="space-y-3.5">
-        {visiblePhases.map((phase, index) => {
-          // Mini bars always show true phase progress, not the filtered slice.
-          const fullPhase = phases.find((p) => p.id === phase.id) ?? phase;
+      {/* Phase tabs — one per stage of the journey, so the plan reads a step
+          at a time rather than one long page. */}
+      <div
+        role="tablist"
+        aria-label="Journey phases"
+        className="flex flex-wrap gap-1.5"
+      >
+        {phases.map((phase) => {
+          const done = phaseProgress(phase).pct === 100;
+          const selected = phase.id === selectedPhaseId;
           return (
-            <li key={phase.id} className="space-y-3.5">
-              <PhaseCard
-                phase={phase}
-                stats={phaseProgress(fullPhase)}
-                asOf={journey.asOf}
-                index={index}
-                onCycleTask={(taskId) => cycleTask(phase.id, taskId)}
-              />
-              {phase.gate && (
-                <div className="sm:pl-[2.875rem]">
-                  <ConfidenceGate
-                    gate={phase.gate}
-                    value={confidence}
-                    onChange={rateConfidence}
-                  />
-                </div>
-              )}
-            </li>
+            <button
+              key={phase.id}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              onClick={() => setSelectedPhaseId(phase.id)}
+              className={`press flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors ${
+                selected
+                  ? "border-accent bg-accent-soft text-accent"
+                  : "border-border bg-surface text-fg-muted hover:border-border-strong hover:text-fg"
+              }`}
+            >
+              <span
+                className={`flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold ${
+                  done
+                    ? "bg-success text-white"
+                    : selected
+                      ? "bg-accent text-accent-contrast"
+                      : "bg-bg-subtle text-fg-muted"
+                }`}
+              >
+                {done ? <CheckIcon className="h-2.5 w-2.5" /> : phase.number}
+              </span>
+              {phase.title}
+            </button>
           );
         })}
-      </ol>
+      </div>
+
+      {selectedPhase && selectedForRender && (
+        <div className="space-y-3.5">
+          <PhaseCard
+            key={selectedPhase.id}
+            phase={selectedForRender}
+            stats={phaseProgress(selectedPhase)}
+            asOf={journey.asOf}
+            index={0}
+            alwaysExpanded
+            onCycleTask={(taskId) => cycleTask(selectedPhase.id, taskId)}
+          />
+          {filter !== "all" && selectedForRender.tasks.length === 0 && (
+            <p className="rounded-card border border-dashed border-border bg-surface-2/50 px-4 py-5 text-center text-[13px] text-fg-muted">
+              No {filter === "client" ? "tasks for you" : "Travelgenix tasks"} in
+              this phase.
+            </p>
+          )}
+          {selectedPhase.gate && (
+            <div className="sm:pl-[2.875rem]">
+              <ConfidenceGate
+                gate={selectedPhase.gate}
+                value={confidence}
+                onChange={rateConfidence}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {overall.pct === 100 && (
         <div className="anim-pop rounded-card border border-success-border bg-success-soft p-8 text-center">

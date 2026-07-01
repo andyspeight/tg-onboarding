@@ -316,7 +316,9 @@ export const INTAKE_SECTIONS: IntakeSection[] = [
         id: "ignite-notes",
         label: "Anything we should know about how you’ll use it?",
         type: "textarea",
-        placeholder: "e.g. who logs in, and what they should see...",
+        placeholder:
+          "e.g. who logs in, and what they should see. If Membership, please let us know your membership structure.",
+        helper: "If Membership, please let us know your membership structure.",
       },
     ],
   },
