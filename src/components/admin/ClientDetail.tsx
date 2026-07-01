@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ProgressBar } from "@/components/ProgressBar";
 import { ClientMessages } from "@/components/admin/ClientMessages";
+import { ClientLogoCard } from "@/components/admin/ClientLogoCard";
 import { PortalAccessCard } from "@/components/admin/PortalAccessCard";
 import type { AdminClientDetail } from "@/lib/onboarding/health";
 import { formatShortDate } from "@/lib/onboarding/dates";
@@ -64,6 +65,15 @@ const JUMP_LABEL: Record<TabId, string> = {
 export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
   const { summary } = detail;
   const [tab, setTab] = useState<TabId>("journey");
+  const [docTab, setDocTab] = useState<"client" | "tg">("client");
+
+  const clientDocs = detail.documents.filter(
+    (doc) => doc.category === "Your uploads",
+  );
+  const tgDocs = detail.documents.filter(
+    (doc) => doc.category !== "Your uploads",
+  );
+  const shownDocs = docTab === "client" ? clientDocs : tgDocs;
 
   const tabs: { id: TabId; label: string; badge?: number }[] = [
     { id: "journey", label: "Journey" },
@@ -142,6 +152,12 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
           </div>
         </div>
       </section>
+
+      <ClientLogoCard
+        clientId={summary.id}
+        company={summary.company}
+        logoUrl={summary.logoUrl}
+      />
 
       <PortalAccessCard
         clientId={summary.id}
@@ -258,13 +274,37 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
 
       {tab === "documents" && (
         <section>
-          <p className="mb-2 text-[12px] text-fg-muted">
-            Everything this client has uploaded (logo, legal docs, images and
-            more), plus anything we’ve shared with them.
-          </p>
+          <div
+            role="tablist"
+            aria-label="Document source"
+            className="mb-3 inline-flex rounded-lg border border-border bg-surface-2/60 p-1"
+          >
+            {[
+              { id: "client" as const, label: "Client documents", count: clientDocs.length },
+              { id: "tg" as const, label: "Travelgenix documents", count: tgDocs.length },
+            ].map(({ id, label, count }) => {
+              const active = docTab === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setDocTab(id)}
+                  className={`press cursor-pointer rounded-md px-3.5 py-1.5 text-[12px] font-semibold transition-colors ${
+                    active
+                      ? "bg-surface text-fg shadow-soft"
+                      : "text-fg-muted hover:text-fg"
+                  }`}
+                >
+                  {label} ({count})
+                </button>
+              );
+            })}
+          </div>
           <div className="overflow-hidden rounded-card border border-border bg-surface shadow-soft">
             <ul className="divide-y divide-border">
-              {detail.documents.map((doc) => (
+              {shownDocs.map((doc) => (
                 <li key={doc.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
                   <div className="min-w-0">
                     <p className="truncate text-[12px] font-medium text-fg">{doc.name}</p>
@@ -278,9 +318,11 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
                   </span>
                 </li>
               ))}
-              {detail.documents.length === 0 && (
+              {shownDocs.length === 0 && (
                 <li className="px-4 py-6 text-center text-[12px] text-fg-muted">
-                  Nothing here yet.
+                  {docTab === "client"
+                    ? "This client hasn’t uploaded anything yet."
+                    : "Nothing shared with this client yet."}
                 </li>
               )}
             </ul>

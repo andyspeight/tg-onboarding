@@ -139,6 +139,7 @@ const CLIENT_F = {
   codeHash: "fldWeUGMasJqrqla5",
   codeIssuedAt: "fldNqmk6H29F9KeB5",
   lastLoginAt: "fld3F5xoTxXJADpsr",
+  logo: "fldtDq6IpOFDGvkNQ",
 };
 
 const PHASE_F = {
@@ -1003,35 +1004,45 @@ function countUnreadFromClient(
   ).length;
 }
 
+/** First renderable image URL in an Airtable attachment cell (thumbnail first). */
+function firstImageUrl(value: unknown): string | undefined {
+  if (!Array.isArray(value)) return undefined;
+  for (const item of value) {
+    if (typeof item !== "object" || item === null) continue;
+    const { url, type, thumbnails } = item as {
+      url?: unknown;
+      type?: unknown;
+      thumbnails?: { large?: { url?: unknown }; small?: { url?: unknown } };
+    };
+    if (typeof type !== "string" || !type.startsWith("image/")) continue;
+    const thumb = thumbnails?.large?.url ?? thumbnails?.small?.url;
+    if (typeof thumb === "string") return thumb;
+    if (typeof url === "string") return url;
+  }
+  return undefined;
+}
+
 /**
- * The client's uploaded logo as an avatar URL, read from the brand-logos
- * intake upload. Prefers an Airtable thumbnail; falls back to the file URL.
- * Only images qualify (SVG/PNG/JPG), so non-image brand assets are skipped.
+ * The client's logo as an avatar URL. A staff-uploaded logo (Clients.Logo)
+ * wins; otherwise we fall back to the logo the client uploaded against the
+ * brand-logos intake field. Only images qualify.
  */
 function clientLogoUrl(
+  clientRecord: AirtableRecord,
   documentRecords: AirtableRecord[],
   clientId: string,
 ): string | undefined {
+  const staffLogo = firstImageUrl(clientRecord.fields[CLIENT_F.logo]);
+  if (staffLogo) return staffLogo;
+
   const logoDocs = documentRecords.filter(
     (record) =>
       links(record, DOC_F.client).includes(clientId) &&
       str(record, DOC_F.sourceField) === "brand-logos",
   );
   for (const doc of logoDocs) {
-    const value = doc.fields[DOC_F.file];
-    if (!Array.isArray(value)) continue;
-    for (const item of value) {
-      if (typeof item !== "object" || item === null) continue;
-      const { url, type, thumbnails } = item as {
-        url?: unknown;
-        type?: unknown;
-        thumbnails?: { large?: { url?: unknown }; small?: { url?: unknown } };
-      };
-      if (typeof type !== "string" || !type.startsWith("image/")) continue;
-      const thumb = thumbnails?.large?.url ?? thumbnails?.small?.url;
-      if (typeof thumb === "string") return thumb;
-      if (typeof url === "string") return url;
-    }
+    const url = firstImageUrl(doc.fields[DOC_F.file]);
+    if (url) return url;
   }
   return undefined;
 }
@@ -1139,7 +1150,7 @@ function summariseClient(
     unreadMessages: countUnreadFromClient(messageRecords, clientId),
     health,
     reasons,
-    logoUrl: clientLogoUrl(documentRecords, clientId),
+    logoUrl: clientLogoUrl(clientRecord, documentRecords, clientId),
   };
 }
 
@@ -1296,6 +1307,38 @@ export async function createClientDocumentWithFile(
     await deleteRecord(config, TABLES.documents, recordId).catch(() => {});
     throw new Error(`Airtable attachment upload responded ${uploadResponse.status}`);
   }
+}
+
+/**
+ * Staff-uploaded client logo → the Clients.Logo attachment cell, used as the
+ * client's dashboard avatar. Clears any existing logo first so exactly one
+ * stays, then attaches the new file via the content endpoint.
+ */
+export async function storeClientLogo(
+  config: AirtableConfig,
+  clientId: string,
+  file: { name: string; contentType: string; base64: string },
+): Promise<void> {
+  await updateRecord(config, TABLES.clients, clientId, { [CLIENT_F.logo]: [] });
+  const uploadResponse = await fetch(
+    `${CONTENT_URL}/${config.baseId}/${clientId}/${CLIENT_F.logo}/uploadAttachment`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.pat}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contentType: file.contentType,
+        file: file.base64,
+        filename: file.name,
+      }),
+    },
+  );
+  if (!uploadResponse.ok) {
+    throw new Error(`Airtable client logo upload responded ${uploadResponse.status}`);
+  }
+  bustReadCache();
 }
 
 /**
