@@ -1492,6 +1492,9 @@ const SUPPLIER_CATEGORIES: SupplierCategory[] = [
   "Package holidays",
   "Accommodation",
   "Flights",
+  "Events & Attractions",
+  "Car Hire & Transfers",
+  "Payment Provider",
 ];
 
 function asSupplierCategory(value: string): SupplierCategory {

@@ -8,6 +8,9 @@ const CATEGORIES: SupplierCategory[] = [
   "Package holidays",
   "Accommodation",
   "Flights",
+  "Events & Attractions",
+  "Car Hire & Transfers",
+  "Payment Provider",
 ];
 
 const inputClasses =

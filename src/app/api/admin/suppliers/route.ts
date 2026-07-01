@@ -14,6 +14,9 @@ const CATEGORIES: SupplierCategory[] = [
   "Package holidays",
   "Accommodation",
   "Flights",
+  "Events & Attractions",
+  "Car Hire & Transfers",
+  "Payment Provider",
 ];
 
 /** Links render as buttons in the client portal: http(s) only, ever. */

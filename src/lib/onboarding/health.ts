@@ -188,7 +188,10 @@ export interface AdminClientDetail {
 export type SupplierCategory =
   | "Package holidays"
   | "Accommodation"
-  | "Flights";
+  | "Flights"
+  | "Events & Attractions"
+  | "Car Hire & Transfers"
+  | "Payment Provider";
 
 export interface AdminSupplier {
   id: string;
