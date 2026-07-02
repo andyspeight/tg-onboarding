@@ -13,9 +13,21 @@ export function AutomationLog({ entries }: { entries: AutomationLogEntry[] }) {
     return (
       <section>
         <h2 className="mb-2.5 text-[13px] font-bold text-fg">Automation log</h2>
-        <div className="rounded-card border border-border bg-surface p-6 text-center text-[13px] text-fg-muted shadow-soft">
-          Nothing automated yet. Nudges, milestones and alerts appear here
-          once the daily run has something to do.
+        <div className="rounded-card border border-border bg-surface p-6 text-[13px] leading-relaxed text-fg-muted shadow-soft">
+          <p className="font-semibold text-fg">
+            This is the onboarding autopilot — nothing to set up.
+          </p>
+          <p className="mt-1.5">
+            Every weekday it checks each client and acts on its own: task
+            reminders 2 days before and 1 day after a due date, milestone
+            congratulations at 50% and 75%, and an alert to the team when a
+            client goes quiet. Everything it does is recorded here, so you can
+            see exactly what’s been sent to whom.
+          </p>
+          <p className="mt-1.5 text-[12px] text-fg-faint">
+            Empty so far — it hasn’t needed to nudge anyone yet. Entries appear
+            after its daily run has something to do.
+          </p>
         </div>
       </section>
     );

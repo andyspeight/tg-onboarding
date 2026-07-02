@@ -900,6 +900,23 @@ export async function setTaskStatus(
   return true;
 }
 
+/**
+ * Staff-only: set (or clear, with "") a task's due date. Any task qualifies —
+ * staff pace the journey. Returns false when the task doesn't exist.
+ */
+export async function setTaskDueDate(
+  config: AirtableConfig,
+  taskId: string,
+  dueDate: string,
+): Promise<boolean> {
+  const task = await getRecord(config, TABLES.tasks, taskId);
+  if (!task) return false;
+  await updateRecord(config, TABLES.tasks, taskId, {
+    [TASK_F.due]: dueDate || null,
+  });
+  return true;
+}
+
 /** Upsert one intake section's answers as one row per field. */
 export async function saveIntakeResponses(
   config: AirtableConfig,

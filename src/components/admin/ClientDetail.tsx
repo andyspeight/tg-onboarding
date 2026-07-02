@@ -66,6 +66,26 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
   const { summary } = detail;
   const [tab, setTab] = useState<TabId>("journey");
   const [docTab, setDocTab] = useState<"client" | "tg">("client");
+  // Staff-edited due dates, optimistic; rolls back if the save fails.
+  const [dues, setDues] = useState<Record<string, string>>({});
+  const [dueError, setDueError] = useState<string | null>(null);
+
+  function saveDueDate(taskId: string, previous: string, next: string) {
+    setDues((prev) => ({ ...prev, [taskId]: next }));
+    setDueError(null);
+    fetch("/api/admin/task-due", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taskId, dueDate: next }),
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error(String(response.status));
+      })
+      .catch(() => {
+        setDues((prev) => ({ ...prev, [taskId]: previous }));
+        setDueError("That due date didn’t save. Try again in a moment.");
+      });
+  }
 
   const clientDocs = detail.documents.filter(
     (doc) => doc.category === "Your uploads",
@@ -205,6 +225,9 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
 
       {tab === "journey" && (
         <section>
+          <p aria-live="polite" className="mb-2 text-[12px] font-medium text-danger">
+            {dueError}
+          </p>
           <div className="space-y-3">
             {detail.phases.map((phase) => (
               <div
@@ -236,9 +259,24 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
                             <p className="mt-0.5 text-[11px] text-fg-faint">
                               {OWNER_LABEL[task.owner]}
                               {task.audience === "internal" ? " · internal" : ""}
-                              {task.dueDate ? ` · due ${formatShortDate(task.dueDate)}` : ""}
                             </p>
                           </div>
+                          <label className="flex shrink-0 items-center gap-1.5 text-[10px] font-medium text-fg-faint">
+                            Due
+                            <input
+                              type="date"
+                              value={dues[task.id] ?? task.dueDate ?? ""}
+                              onChange={(event) =>
+                                saveDueDate(
+                                  task.id,
+                                  dues[task.id] ?? task.dueDate ?? "",
+                                  event.target.value,
+                                )
+                              }
+                              aria-label={`Due date for ${task.title}`}
+                              className="h-7 cursor-pointer rounded-md border border-border bg-surface px-1.5 text-[11px] text-fg-muted transition-colors hover:border-border-strong focus:border-accent-bright focus:outline-none focus:ring-2 focus:ring-accent-bright/15"
+                            />
+                          </label>
                           {jump && (
                             <button
                               type="button"
