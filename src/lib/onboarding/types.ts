@@ -193,6 +193,8 @@ export interface IntakeUpload {
   id: string;
   name: string;
   fileType: string;
+  /** Thumbnail/preview URL when the upload is an image. */
+  url?: string;
 }
 
 export interface OnboardingJourney {

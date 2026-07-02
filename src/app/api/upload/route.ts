@@ -88,6 +88,8 @@ export async function POST(request: Request) {
     });
     await recordSignalAndTouch(config, clientId, "document-uploaded", name);
     revalidatePath("/documents");
+    // Intake upload fields reflect tagged uploads, so refresh Your details too.
+    revalidatePath("/details");
     return Response.json({ ok: true });
   } catch (error) {
     console.error("[api/upload] failed:", error);

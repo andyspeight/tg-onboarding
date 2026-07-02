@@ -31,7 +31,7 @@ export function UploadField({
   files: UploadedFile[];
   live: boolean;
   /** Files already uploaded against this field, shown read-only. */
-  initial?: { id: string; name: string; fileType: string }[];
+  initial?: { id: string; name: string; fileType: string; url?: string }[];
   onChange: (files: UploadedFile[]) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -130,15 +130,24 @@ export function UploadField({
               key={file.id}
               className="flex items-center gap-2.5 rounded-md border border-border bg-surface px-3 py-2"
             >
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-accent-soft text-[9px] font-bold text-accent">
-                {file.fileType}
-              </span>
+              {file.url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={file.url}
+                  alt=""
+                  className="h-9 w-9 shrink-0 rounded border border-border bg-white object-contain"
+                />
+              ) : (
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-accent-soft text-[9px] font-bold text-accent">
+                  {file.fileType}
+                </span>
+              )}
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13px] font-medium text-fg">
                   {file.name}
                 </span>
-                <span className="block text-[11px] text-fg-faint">
-                  Saved to your documents
+                <span className="block text-[11px] text-success">
+                  ✓ Uploaded — saved to your documents
                 </span>
               </span>
             </li>

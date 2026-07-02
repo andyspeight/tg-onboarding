@@ -684,7 +684,10 @@ export async function fetchJourneyFromAirtable(
 
     // Uploads tagged with the intake field they came from, so the form can
     // show the client what they've already sent rather than looking empty.
-    const intakeUploads: Record<string, { id: string; name: string; fileType: string }[]> = {};
+    const intakeUploads: Record<
+      string,
+      { id: string; name: string; fileType: string; url?: string }[]
+    > = {};
     for (const record of documentRecords) {
       const fieldId = str(record, DOC_F.sourceField);
       if (!fieldId) continue;
@@ -692,6 +695,7 @@ export async function fetchJourneyFromAirtable(
         id: record.id,
         name: str(record, DOC_F.name),
         fileType: str(record, DOC_F.fileType),
+        url: firstImageUrl(record.fields[DOC_F.file]),
       });
     }
 

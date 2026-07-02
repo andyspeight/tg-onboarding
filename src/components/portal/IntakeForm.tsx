@@ -79,7 +79,7 @@ function Field({
   files: UploadedFile[];
   live: boolean;
   suppliers: PortalSupplier[];
-  uploaded: { id: string; name: string; fileType: string }[];
+  uploaded: { id: string; name: string; fileType: string; url?: string }[];
   onChange: (value: string) => void;
   onSelectionsChange: (selections: string[]) => void;
   onFilesChange: (files: UploadedFile[]) => void;
@@ -225,7 +225,10 @@ export function IntakeForm({
   responses: Record<string, string>;
   live: boolean;
   suppliers: PortalSupplier[];
-  uploads?: Record<string, { id: string; name: string; fileType: string }[]>;
+  uploads?: Record<
+    string,
+    { id: string; name: string; fileType: string; url?: string }[]
+  >;
   className?: string;
 }) {
   const [values, setValues] = useState<Record<string, string>>(() => {
