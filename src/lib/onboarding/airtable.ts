@@ -1690,6 +1690,20 @@ export async function clientExists(
   return (await getRecord(config, TABLES.clients, clientId)) !== null;
 }
 
+/** Light contact lookup for routes that email the client (access codes). */
+export async function getClientContact(
+  config: AirtableConfig,
+  clientId: string,
+): Promise<{ company: string; contactName: string; email: string } | null> {
+  const record = await getRecord(config, TABLES.clients, clientId);
+  if (!record) return null;
+  return {
+    company: str(record, CLIENT_F.company),
+    contactName: str(record, CLIENT_F.contactName),
+    email: str(record, CLIENT_F.email),
+  };
+}
+
 export interface MessageFile {
   name: string;
   contentType: string;

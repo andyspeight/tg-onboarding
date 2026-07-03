@@ -46,6 +46,35 @@ The Travelgenix team`;
   return { subject, text, html };
 }
 
+export function accessCodeEmail(
+  firstName: string,
+  company: string,
+  email: string,
+  code: string,
+): Template {
+  const loginUrl = `${APP_BASE}/login`;
+  const subject = "Your Travelgenix portal login";
+  const text = `Hi ${firstName},
+
+Here's your login for the ${company} onboarding portal.
+
+Sign in at: ${loginUrl}
+Your email: ${email}
+Your access code: ${code}
+
+Keep the code somewhere safe. If you ever lose it, no problem, your account manager can issue a fresh one in seconds.
+
+The Travelgenix team`;
+  const html = shell(
+    `<p style="margin:0 0 14px;font-size:16px;font-weight:700;">Your portal login, ${firstName}</p>
+<p style="margin:0 0 14px;font-size:14px;line-height:1.6;">Here's your login for the <strong>${company}</strong> onboarding portal.</p>
+<p style="margin:0 0 14px;padding:12px 16px;background:#f7f8fa;border-radius:8px;font-size:14px;line-height:1.8;">Your email: <strong>${email}</strong><br/>Your access code: <strong style="letter-spacing:0.05em;">${code}</strong></p>
+<p style="margin:0 0 20px;font-size:14px;line-height:1.6;">Keep the code somewhere safe. If you ever lose it, no problem, your account manager can issue a fresh one in seconds.</p>
+<p style="margin:0;">${button(loginUrl, "Sign in to your portal")}</p>`,
+  );
+  return { subject, text, html };
+}
+
 export function reminderEmail(
   firstName: string,
   taskTitle: string,

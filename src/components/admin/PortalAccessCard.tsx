@@ -4,9 +4,9 @@ import { useState } from "react";
 import { formatShortDate } from "@/lib/onboarding/dates";
 
 /**
- * Issue and rotate a client's portal login from their file. The code is
- * shown exactly once — copy it, share it securely, done. Reissuing kills
- * the old code on the spot.
+ * Issue and rotate a client's portal login from their file. Issuing emails
+ * the code to the client automatically; it's also shown here once as a
+ * fallback. Reissuing kills the old code on the spot.
  */
 export function PortalAccessCard({
   clientId,
@@ -20,6 +20,7 @@ export function PortalAccessCard({
   lastLoginAt?: string;
 }) {
   const [code, setCode] = useState<string | null>(null);
+  const [emailed, setEmailed] = useState(false);
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,8 +42,12 @@ export function PortalAccessCard({
         return;
       }
       if (!response.ok) throw new Error(String(response.status));
-      const result = (await response.json()) as { code?: string };
+      const result = (await response.json()) as {
+        code?: string;
+        emailed?: boolean;
+      };
       setCode(result.code ?? null);
+      setEmailed(Boolean(result.emailed));
       setCopied(false);
     } catch {
       setError("That didn’t work. Try again in a moment.");
@@ -119,8 +124,9 @@ export function PortalAccessCard({
             {copied ? "Copied" : "Copy"}
           </button>
           <p className="w-full text-[11px] leading-relaxed text-fg-muted">
-            Shown once only — share it with {contactEmail ?? "the client"}{" "}
-            securely. Reissuing replaces it.
+            {emailed
+              ? `Emailed to ${contactEmail ?? "the client"} with their sign-in link. Shown here once as backup — reissuing replaces it.`
+              : `The email didn’t send, so share it with ${contactEmail ?? "the client"} yourself — shown once only. Reissuing replaces it.`}
           </p>
         </div>
       )}
