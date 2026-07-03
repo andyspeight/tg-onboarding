@@ -51,10 +51,10 @@ export function DesktopAlerts() {
   // mismatch the server HTML.
   useEffect(() => {
     if (typeof Notification === "undefined") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- browser-only value; rendering it would mismatch server HTML
       setSupported(false);
       return;
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPermission(Notification.permission);
     setAmName(localStorage.getItem(AM_KEY));
   }, []);
