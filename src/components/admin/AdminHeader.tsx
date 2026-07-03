@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { DesktopAlerts } from "@/components/admin/DesktopAlerts";
 
 const NAV = [
   { href: "/admin", label: "Overview" },
@@ -56,13 +57,16 @@ export function AdminHeader() {
           })}
         </nav>
 
-        <button
-          type="button"
-          onClick={logout}
-          className="press cursor-pointer rounded-full border border-white/15 px-3.5 py-1.5 text-[12px] font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white"
-        >
-          Log out
-        </button>
+        <div className="flex items-center gap-2">
+          <DesktopAlerts />
+          <button
+            type="button"
+            onClick={logout}
+            className="press cursor-pointer rounded-full border border-white/15 px-3.5 py-1.5 text-[12px] font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            Log out
+          </button>
+        </div>
       </div>
     </header>
   );

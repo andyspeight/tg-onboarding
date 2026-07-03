@@ -908,6 +908,77 @@ async function maybeSendActivityAlert(
   ]);
 }
 
+/** One recent client action, joined with who did it — for desktop alerts. */
+export interface ActivityFeedItem {
+  id: string;
+  /** ISO timestamp of the action. */
+  at: string;
+  signal: string;
+  detail: string;
+  clientId: string;
+  company: string;
+  contactName: string;
+  accountManager: string;
+}
+
+/**
+ * Recent client activity plus the AM list, polled by the dashboard's
+ * desktop-alerts control. Cached reads — a 60s poll costs nothing extra.
+ */
+export async function fetchActivityFeed(): Promise<{
+  accountManagers: string[];
+  items: ActivityFeedItem[];
+} | null> {
+  const config = airtableConfig();
+  if (!config) return null;
+
+  try {
+    const [signalRecords, clients] = await Promise.all([
+      listAll(config, TABLES.engagementSignals, true),
+      listAll(config, TABLES.clients, true),
+    ]);
+    const clientById = new Map(clients.map((record) => [record.id, record]));
+    const accountManagers = [
+      ...new Set(
+        clients
+          .map((record) => str(record, CLIENT_F.accountManager))
+          .filter(Boolean),
+      ),
+    ].sort();
+
+    const items = [...signalRecords]
+      .sort(
+        (a, b) =>
+          Date.parse(str(b, SIGNAL_F.at)) - Date.parse(str(a, SIGNAL_F.at)),
+      )
+      .slice(0, 50)
+      .flatMap((record) => {
+        const clientId = firstLink(record, SIGNAL_F.client);
+        const client = clientId ? clientById.get(clientId) : undefined;
+        if (!clientId || !client) return [];
+        const rawDetail = str(record, SIGNAL_F.detail);
+        return [
+          {
+            id: record.id,
+            at: str(record, SIGNAL_F.at),
+            signal: str(record, SIGNAL_F.signal),
+            // Raw record ids mean nothing outside the base.
+            detail: /^rec[A-Za-z0-9]{14}$/.test(rawDetail) ? "" : rawDetail,
+            clientId,
+            company: str(client, CLIENT_F.company),
+            contactName: str(client, CLIENT_F.contactName),
+            accountManager: str(client, CLIENT_F.accountManager),
+          },
+        ];
+      });
+
+    return { accountManagers, items };
+  } catch (error) {
+    console.error("[onboarding/airtable] activity feed read failed:", error);
+    return null;
+  }
+}
+
 /** Append an engagement signal and bump the client's Last Active. */
 export async function recordSignalAndTouch(
   config: AirtableConfig,
