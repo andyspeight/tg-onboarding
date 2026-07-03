@@ -27,8 +27,9 @@ import {
 } from "./health";
 import { revalidateTag } from "next/cache";
 import { TASK_TEMPLATE } from "./task-template";
-import { send } from "../email";
+import { emailConfigured, send } from "../email";
 import {
+  activityAlertEmail,
   milestoneEmail,
   reminderEmail,
   welcomeEmail,
@@ -827,6 +828,86 @@ export async function markClientLogin(
   });
 }
 
+/**
+ * Client actions that email the AM. Messages are excluded (they have their
+ * own instant alert) and logins are dashboard-only noise.
+ */
+const ACTIVITY_ALERT_LINES: Record<string, string> = {
+  "task-updated": "updated their action plan",
+  "intake-saved": "saved a section of Your details",
+  "document-uploaded": "uploaded a file",
+  "confidence-rated": "rated their confidence",
+  "training-completed": "completed a training item",
+};
+
+/**
+ * Email the staff inbox about client activity — at most ONE per client per
+ * clock hour, so an active session reads as a single nudge, not a flood.
+ * The Automation Log both records and throttles (dedupe on an hour bucket),
+ * so alerts show on the dashboard panel like everything else automated.
+ */
+async function maybeSendActivityAlert(
+  config: AirtableConfig,
+  clientId: string,
+  signal: string,
+  detail: string,
+): Promise<void> {
+  const action = ACTIVITY_ALERT_LINES[signal];
+  const staffEmail = process.env.STAFF_ALERT_EMAIL;
+  if (!action || !staffEmail || !emailConfigured()) return;
+
+  const now = new Date().toISOString();
+  const dedupeKey = `activity:${clientId}:${now.slice(0, 13)}`;
+  const logRecords = await listAll(config, TABLES.automationLog, true);
+  if (
+    logRecords.some(
+      (record) => str(record, AUTOMATION_F.dedupeKey) === dedupeKey,
+    )
+  ) {
+    return;
+  }
+
+  const clientRecord = await getRecord(config, TABLES.clients, clientId);
+  if (!clientRecord) return;
+  const company = str(clientRecord, CLIENT_F.company);
+  const contactName = str(clientRecord, CLIENT_F.contactName);
+  const manager = str(clientRecord, CLIENT_F.accountManager) || "team";
+  const appBase =
+    process.env.APP_BASE_URL || "https://tg-onboarding-gamma.vercel.app";
+  const clientUrl = `${appBase}/admin/clients/${clientId}`;
+  // Raw record ids (task signals) mean nothing in an inbox — drop those.
+  const showDetail = detail !== "" && !/^rec[A-Za-z0-9]{14}$/.test(detail);
+  const actionLine = showDetail
+    ? `${action} (${detail.slice(0, 120)})`
+    : action;
+
+  const tpl = activityAlertEmail(
+    manager,
+    company,
+    contactName,
+    actionLine,
+    clientUrl,
+  );
+  const result = await send({
+    to: staffEmail,
+    subject: tpl.subject,
+    text: tpl.text,
+    html: tpl.html,
+  });
+
+  await createRecords(config, TABLES.automationLog, [
+    {
+      [AUTOMATION_F.summary]: `Activity: ${company} — ${contactName} ${actionLine}`,
+      [AUTOMATION_F.client]: [clientId],
+      [AUTOMATION_F.event]: "activity-alert",
+      [AUTOMATION_F.channel]: result.sent ? "email" : "portal",
+      [AUTOMATION_F.recipient]: staffEmail,
+      [AUTOMATION_F.dedupeKey]: dedupeKey,
+      [AUTOMATION_F.sentAt]: now,
+    },
+  ]);
+}
+
 /** Append an engagement signal and bump the client's Last Active. */
 export async function recordSignalAndTouch(
   config: AirtableConfig,
@@ -847,6 +928,7 @@ export async function recordSignalAndTouch(
     await updateRecord(config, TABLES.clients, clientId, {
       [CLIENT_F.lastActive]: now,
     });
+    await maybeSendActivityAlert(config, clientId, signal, detail);
   } catch (error) {
     // Signals are telemetry: never fail the user's action over them.
     console.error("[onboarding/airtable] signal write failed:", error);

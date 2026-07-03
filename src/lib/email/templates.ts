@@ -152,6 +152,32 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
+export function activityAlertEmail(
+  managerName: string,
+  company: string,
+  contactName: string,
+  rawActionLine: string,
+  clientUrl: string,
+): Template {
+  const subject = `Client activity: ${company}`;
+  const text = `Hi ${managerName},
+
+${contactName} at ${company} has just ${rawActionLine} in their onboarding portal.
+
+See what they've been up to: ${clientUrl}
+
+You'll get at most one of these an hour per client — their file has the full trail.
+
+The Travelgenix onboarding tool`;
+  const html = shell(
+    `<p style="margin:0 0 14px;font-size:16px;font-weight:700;">${escapeHtml(company)} is active</p>
+<p style="margin:0 0 14px;font-size:14px;line-height:1.6;">${escapeHtml(contactName)} has just ${escapeHtml(rawActionLine)} in their onboarding portal.</p>
+<p style="margin:0 0 20px;font-size:13px;line-height:1.6;color:#6b7280;">You'll get at most one of these an hour per client — their file has the full trail.</p>
+<p style="margin:0;">${button(clientUrl, "Open their file")}</p>`,
+  );
+  return { subject, text, html };
+}
+
 export function newMessageEmail(
   company: string,
   contactName: string,

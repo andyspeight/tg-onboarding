@@ -4,6 +4,7 @@ const EVENT_CLS: Record<string, string> = {
   reminder: "bg-orange-soft text-orange",
   milestone: "bg-success-soft text-success",
   "wilting-alert": "bg-danger-soft text-danger",
+  "activity-alert": "bg-info-soft text-info",
   welcome: "bg-accent-soft text-accent",
 };
 
