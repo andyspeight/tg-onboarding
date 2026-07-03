@@ -1,8 +1,5 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import {
-  getPortalClientId,
-  type AirtableConfig,
-} from "@/lib/onboarding/airtable";
+import type { AirtableConfig } from "@/lib/onboarding/airtable";
 
 /**
  * Client portal authentication (staff-issued access codes — Control SSO
@@ -124,13 +121,15 @@ export function clientIdFromRequest(request: Request): string | null {
 }
 
 /**
- * The one resolver every client write route uses: session-scoped once
- * auth is on, pinned-oldest compat while it's off. Null means 401.
+ * The one resolver every client write route uses: the session's client id,
+ * or null (→ 401). With auth unconfigured there is NO client — writes fail
+ * closed, matching the read side (pinned-oldest compat removed after the
+ * 3 Jul 2026 incident).
  */
 export async function resolveRouteClientId(
   request: Request,
-  config: AirtableConfig,
+  _config: AirtableConfig,
 ): Promise<string | null> {
-  if (clientAuthConfigured()) return clientIdFromRequest(request);
-  return getPortalClientId(config);
+  if (!clientAuthConfigured()) return null;
+  return clientIdFromRequest(request);
 }

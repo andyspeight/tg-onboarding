@@ -1,11 +1,7 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import {
-  airtableConfig,
-  fetchJourneyFromAirtable,
-  getPortalClientId,
-} from "./airtable";
+import { airtableConfig, fetchJourneyFromAirtable } from "./airtable";
 import {
   CLIENT_COOKIE,
   clientAuthConfigured,
@@ -19,37 +15,29 @@ import type { OnboardingJourney } from "./types";
  * enforcement gate.
  *
  * Resolution order:
- * - No Airtable env → mock journey, no login (local dev, demos, outages
- *   at the env level).
  * - CLIENT_AUTH_SECRET set → a valid session cookie is required; anything
  *   else redirects to /login, and the journey is the SESSION's client.
- * - Secret unset (compat) → the pre-auth behaviour: pinned to the oldest
- *   client record. This is what production does until Andy flips the env.
+ * - Secret unset or missing Airtable env → the MOCK journey only. A real
+ *   client's data is never served without a session. (This replaced the
+ *   old pinned-oldest-client compat after the 3 Jul 2026 incident: an
+ *   accidentally-empty secret plus a real client in the base let that
+ *   client see the demo journey unauthenticated. Fail closed, always.)
  *
  * Every portal layout/page calls this, so protection can't be forgotten
  * on a new page. `cache` dedupes within a request.
  */
 const getJourney = cache(async (): Promise<OnboardingJourney> => {
   const config = airtableConfig();
-  if (!config) return makeMockJourney();
+  if (!config || !clientAuthConfigured()) return makeMockJourney();
 
-  let clientId: string | null;
-  if (clientAuthConfigured()) {
-    const cookieStore = await cookies();
-    clientId = clientIdFromToken(cookieStore.get(CLIENT_COOKIE)?.value);
-    if (!clientId) redirect("/login");
-  } else {
-    clientId = await getPortalClientId(config);
-  }
-  if (!clientId) return makeMockJourney();
+  const cookieStore = await cookies();
+  const clientId = clientIdFromToken(cookieStore.get(CLIENT_COOKIE)?.value);
+  if (!clientId) redirect("/login");
 
   const live = await fetchJourneyFromAirtable(clientId);
-  if (!live) {
-    // Stale session (client removed) or Airtable trouble. With auth on,
-    // never show another journey — back to the door.
-    if (clientAuthConfigured()) redirect("/login");
-    return makeMockJourney();
-  }
+  // Stale session (client removed) or Airtable trouble: never show another
+  // journey — back to the door.
+  if (!live) redirect("/login");
   return live;
 });
 

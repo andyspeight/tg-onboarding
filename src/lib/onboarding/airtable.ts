@@ -260,17 +260,6 @@ interface AirtableRecord {
   fields: Record<string, unknown>;
 }
 
-/**
- * Until client auth lands, the portal is pinned to the OLDEST client record
- * (the seed client), so adding clients from the dashboard can never switch
- * whose journey the public portal shows.
- */
-function oldestFirst(records: AirtableRecord[]): AirtableRecord[] {
-  return [...records].sort((a, b) =>
-    (a.createdTime ?? "").localeCompare(b.createdTime ?? ""),
-  );
-}
-
 export interface AirtableConfig {
   pat: string;
   baseId: string;
@@ -798,17 +787,6 @@ export async function fetchJourneyFromAirtable(
 /* Writes — used only by the validated API routes.                          */
 /* ------------------------------------------------------------------------ */
 
-/**
- * Compat lookup while CLIENT_AUTH_SECRET is unset: the portal stays pinned
- * to the OLDEST client record (the seed client). Once the secret is set,
- * sessions replace this everywhere.
- */
-export async function getPortalClientId(
-  config: AirtableConfig,
-): Promise<string | null> {
-  const clients = await listAll(config, TABLES.clients);
-  return oldestFirst(clients)[0]?.id ?? null;
-}
 
 /** Login lookup: case-insensitive email match. Fresh read, never cached. */
 export async function findClientByEmail(
