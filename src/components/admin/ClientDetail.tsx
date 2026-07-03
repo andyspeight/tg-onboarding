@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ProgressBar } from "@/components/ProgressBar";
 import { ClientMessages } from "@/components/admin/ClientMessages";
 import { ClientLogoCard } from "@/components/admin/ClientLogoCard";
+import { ClientDocumentUpload } from "@/components/admin/ClientDocumentUpload";
 import { PortalAccessCard } from "@/components/admin/PortalAccessCard";
 import type { AdminClientDetail } from "@/lib/onboarding/health";
 import { formatShortDate } from "@/lib/onboarding/dates";
@@ -312,6 +313,7 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
 
       {tab === "documents" && (
         <section>
+          <ClientDocumentUpload clientId={summary.id} />
           <div
             role="tablist"
             aria-label="Document source"

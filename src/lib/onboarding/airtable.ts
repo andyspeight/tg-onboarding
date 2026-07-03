@@ -1276,6 +1276,10 @@ export async function createClientDocumentWithFile(
     base64: string;
     /** Intake field this upload belongs to, if any (e.g. "brand-logos"). */
     sourceField?: string;
+    /** Client uploads land in "Your uploads"; staff shares set a real one. */
+    category?: string;
+    /** "received" for client uploads, "available" for staff shares. */
+    status?: string;
   },
 ): Promise<void> {
   const createResponse = await airtableFetch(config, TABLES.documents, {
@@ -1286,9 +1290,9 @@ export async function createClientDocumentWithFile(
           fields: {
             [DOC_F.name]: file.name,
             [DOC_F.client]: [clientId],
-            [DOC_F.category]: "Your uploads",
+            [DOC_F.category]: file.category ?? "Your uploads",
             [DOC_F.fileType]: file.fileType,
-            [DOC_F.status]: "received",
+            [DOC_F.status]: file.status ?? "received",
             [DOC_F.added]: ukToday(),
             ...(file.sourceField
               ? { [DOC_F.sourceField]: file.sourceField }

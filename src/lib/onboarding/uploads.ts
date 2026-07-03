@@ -17,6 +17,20 @@ export interface ScreenedFile {
   file: File;
 }
 
+/**
+ * Categories staff can file a shared document under. These group the
+ * client's "Travelgenix documents" tab; "Your uploads" is reserved for
+ * what the client sends us.
+ */
+export const DOCUMENT_CATEGORIES = [
+  "Getting started",
+  "Contracts",
+  "Supplier guides",
+  "Technical",
+  "Training",
+  "Your site",
+];
+
 /** General document hub uploads. */
 export const DOCUMENT_EXTENSIONS = [
   "png",
