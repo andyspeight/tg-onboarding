@@ -25,6 +25,21 @@ export async function POST(request: Request) {
   if (!adminSessionFromRequest(request)) return jsonError(401, "Sign in first");
 
   if (!clientAuthConfigured()) {
+    // Self-diagnosis for the "set but not seen" case: log the NAMES (never
+    // values) of any candidate keys, JSON-escaped so an invisible character
+    // pasted into the key shows up, plus whether the value is empty.
+    const candidates = Object.keys(process.env).filter((key) =>
+      key.toUpperCase().includes("CLIENT") || key.toUpperCase().includes("AUTH"),
+    );
+    console.error(
+      "[api/admin-client-access] CLIENT_AUTH_SECRET not visible.",
+      "candidate keys:",
+      JSON.stringify(candidates),
+      "exact-key present:",
+      "CLIENT_AUTH_SECRET" in process.env,
+      "value empty:",
+      process.env.CLIENT_AUTH_SECRET === "",
+    );
     return jsonError(503, "Set CLIENT_AUTH_SECRET to switch client logins on");
   }
 
