@@ -41,11 +41,17 @@ function DocRow({
   fileType,
   meta,
   status,
+  viewUrl,
+  downloadHref,
 }: {
   name: string;
   fileType: string;
   meta: string;
   status: keyof typeof STATUS_META;
+  /** The stored file — View opens it in a new tab. */
+  viewUrl?: string;
+  /** Authenticated download route for a proper save-to-disk. */
+  downloadHref?: string;
 }) {
   const statusMeta = STATUS_META[status];
   const typeCls = TYPE_CLS[fileType] ?? "bg-bg-subtle text-fg-muted";
@@ -63,6 +69,24 @@ function DocRow({
         </span>
         <span className="mt-0.5 block text-[11px] text-fg-faint">{meta}</span>
       </span>
+      {viewUrl && (
+        <a
+          href={viewUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="press shrink-0 cursor-pointer rounded-md border border-border px-2.5 py-1 text-[11px] font-medium text-fg-muted transition-colors hover:border-border-strong hover:text-fg"
+        >
+          View
+        </a>
+      )}
+      {downloadHref && (
+        <a
+          href={downloadHref}
+          className="press shrink-0 cursor-pointer rounded-md border border-border px-2.5 py-1 text-[11px] font-medium text-fg-muted transition-colors hover:border-border-strong hover:text-fg"
+        >
+          Download
+        </a>
+      )}
       <span
         className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${statusMeta.cls}`}
       >
@@ -246,6 +270,10 @@ export function DocumentHub({
                   fileType={doc.fileType}
                   meta={`Added ${formatShortDate(doc.addedAt)}`}
                   status={doc.status}
+                  viewUrl={doc.url}
+                  downloadHref={
+                    doc.url ? `/api/documents/download?id=${doc.id}` : undefined
+                  }
                 />
               ))}
             </ul>
@@ -274,6 +302,12 @@ export function DocumentHub({
                           fileType={doc.fileType}
                           meta={`${doc.status === "pending" ? "Expected" : "Added"} ${formatShortDate(doc.addedAt)}`}
                           status={doc.status}
+                          viewUrl={doc.url}
+                          downloadHref={
+                            doc.url
+                              ? `/api/documents/download?id=${doc.id}`
+                              : undefined
+                          }
                         />
                       ))}
                   </ul>

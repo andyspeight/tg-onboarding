@@ -345,14 +345,32 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
           <div className="overflow-hidden rounded-card border border-border bg-surface shadow-soft">
             <ul className="divide-y divide-border">
               {shownDocs.map((doc) => (
-                <li key={doc.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
-                  <div className="min-w-0">
+                <li key={doc.id} className="flex items-center gap-3 px-4 py-2.5">
+                  <div className="min-w-0 flex-1">
                     <p className="truncate text-[12px] font-medium text-fg">{doc.name}</p>
                     <p className="text-[11px] text-fg-faint">
                       {doc.category}
                       {doc.addedAt ? ` · ${formatShortDate(doc.addedAt)}` : ""}
                     </p>
                   </div>
+                  {doc.url && (
+                    <>
+                      <a
+                        href={doc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="press shrink-0 cursor-pointer rounded-md border border-border px-2.5 py-1 text-[11px] font-medium text-fg-muted transition-colors hover:border-border-strong hover:text-fg"
+                      >
+                        View
+                      </a>
+                      <a
+                        href={`/api/documents/download?id=${doc.id}`}
+                        className="press shrink-0 cursor-pointer rounded-md border border-border px-2.5 py-1 text-[11px] font-medium text-fg-muted transition-colors hover:border-border-strong hover:text-fg"
+                      >
+                        Download
+                      </a>
+                    </>
+                  )}
                   <span className="shrink-0 rounded-full bg-bg-subtle px-2.5 py-0.5 text-[10px] font-semibold text-fg-muted">
                     {doc.status}
                   </span>

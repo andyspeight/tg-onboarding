@@ -168,6 +168,8 @@ export interface ClientDocument {
   /** ISO date. For `pending` documents this is the expected date. */
   addedAt: string;
   status: DocumentStatus;
+  /** The stored file, for View/Download. Absent while a doc is pending. */
+  url?: string;
 }
 
 /** A file attached to a thread message. */

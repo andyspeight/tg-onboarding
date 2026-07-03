@@ -145,6 +145,8 @@ export interface AdminDetailDocument {
   category: string;
   status: string;
   addedAt: string;
+  /** The stored file, for View/Download. Absent while a doc is pending. */
+  url?: string;
 }
 
 export interface AdminDetailIntakeSection {

@@ -669,6 +669,7 @@ export async function fetchJourneyFromAirtable(
           : str(record, DOC_F.status) === "pending"
             ? "pending"
             : "available",
+      url: firstAttachment(record.fields[DOC_F.file])?.url,
     }));
 
     // Uploads tagged with the intake field they came from, so the form can
@@ -1003,6 +1004,28 @@ function countUnreadFromClient(
   ).length;
 }
 
+/** First attachment in a cell, any file type — for View/Download. */
+function firstAttachment(
+  value: unknown,
+): { url: string; filename: string; contentType: string } | undefined {
+  if (!Array.isArray(value)) return undefined;
+  for (const item of value) {
+    if (typeof item !== "object" || item === null) continue;
+    const { url, filename, type } = item as {
+      url?: unknown;
+      filename?: unknown;
+      type?: unknown;
+    };
+    if (typeof url !== "string" || url === "") continue;
+    return {
+      url,
+      filename: typeof filename === "string" ? filename : "document",
+      contentType: typeof type === "string" ? type : "application/octet-stream",
+    };
+  }
+  return undefined;
+}
+
 /** First renderable image URL in an Airtable attachment cell (thumbnail first). */
 function firstImageUrl(value: unknown): string | undefined {
   if (!Array.isArray(value)) return undefined;
@@ -1313,6 +1336,24 @@ export async function createClientDocumentWithFile(
 }
 
 /**
+ * One document's stored file plus its client links, for the authenticated
+ * download route. Null when the record or its attachment doesn't exist.
+ */
+export async function getDocumentFile(
+  config: AirtableConfig,
+  documentId: string,
+): Promise<
+  | { url: string; filename: string; contentType: string; clientIds: string[] }
+  | null
+> {
+  const record = await getRecord(config, TABLES.documents, documentId);
+  if (!record) return null;
+  const file = firstAttachment(record.fields[DOC_F.file]);
+  if (!file) return null;
+  return { ...file, clientIds: links(record, DOC_F.client) };
+}
+
+/**
  * Staff-uploaded client logo → the Clients.Logo attachment cell, used as the
  * client's dashboard avatar. Clears any existing logo first so exactly one
  * stays, then attaches the new file via the content endpoint.
@@ -1453,6 +1494,7 @@ export async function fetchAdminClientDetail(
         category: str(record, DOC_F.category),
         status: str(record, DOC_F.status),
         addedAt: str(record, DOC_F.added),
+        url: firstAttachment(record.fields[DOC_F.file])?.url,
       }));
 
     const plan = summary.plan;
