@@ -12,9 +12,9 @@ function todayIso(): string {
 }
 
 /**
- * Creates the client and stamps out their seven-phase journey for the
- * chosen package. Portal login issuance joins this form when the
- * client-auth slice lands.
+ * Creates the client and stamps out their six-phase journey for the
+ * chosen package. Portal access codes are issued afterwards from the
+ * client detail's Portal access card.
  */
 export function AddClientForm() {
   const [company, setCompany] = useState("");
@@ -25,11 +25,13 @@ export function AddClientForm() {
   const [startDate, setStartDate] = useState(todayIso);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true);
     setError(null);
+    setSessionExpired(false);
     try {
       const response = await fetch("/api/admin/clients", {
         method: "POST",
@@ -50,10 +52,13 @@ export function AddClientForm() {
         window.location.assign(`/admin/clients/${payload.clientId}`);
         return;
       }
+      setSessionExpired(response.status === 401);
       setError(
-        response.status === 400
-          ? "Check the details. Something there isn’t valid."
-          : "That didn’t save. Try again in a moment.",
+        response.status === 401
+          ? "Your sign-in has expired. Sign back in (opens in a new tab), then press Create again — everything you’ve typed here is kept."
+          : response.status === 400
+            ? "Check the details. Something there isn’t valid."
+            : "That didn’t save. Try again in a moment.",
       );
     } catch {
       setError("That didn’t save. Try again in a moment.");
@@ -156,6 +161,19 @@ export function AddClientForm() {
         {error && (
           <p aria-live="polite" className="text-[13px] font-medium text-danger">
             {error}
+            {sessionExpired && (
+              <>
+                {" "}
+                <a
+                  href="/admin/login"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold underline underline-offset-2"
+                >
+                  Staff login ↗
+                </a>
+              </>
+            )}
           </p>
         )}
         <button

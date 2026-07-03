@@ -20,9 +20,10 @@ export default function AddClientPage() {
         Add a client
       </h1>
       <p className="mt-1.5 text-sm leading-relaxed text-fg-muted">
-        Creates their record and stamps out the full seven-phase journey for
-        their package, with due dates paced from the start date. Portal logins
-        arrive with the client-auth slice.
+        Creates their record and stamps out the full six-phase journey for
+        their package, with due dates paced from the start date. Once created,
+        issue their portal access code from the Portal access card on their
+        client page.
       </p>
 
       <div className="mt-6 rounded-card border border-border bg-surface p-5 shadow-soft sm:p-6">
