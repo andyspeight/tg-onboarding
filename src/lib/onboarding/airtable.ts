@@ -30,6 +30,8 @@ import { TASK_TEMPLATE } from "./task-template";
 import { emailConfigured, send } from "../email";
 import {
   activityAlertEmail,
+  clientDocumentEmail,
+  clientMessageEmail,
   milestoneEmail,
   reminderEmail,
   welcomeEmail,
@@ -977,6 +979,92 @@ export async function fetchActivityFeed(): Promise<{
     console.error("[onboarding/airtable] activity feed read failed:", error);
     return null;
   }
+}
+
+/**
+ * Email the CLIENT about something we did (message, document share) — at
+ * most one per client per clock hour per kind, so a working session on our
+ * side lands as a single friendly nudge. Recorded in the Automation Log
+ * (which also provides the throttle), and never throws: the action itself
+ * always matters more than the nudge.
+ */
+async function maybeEmailClientHourly(
+  config: AirtableConfig,
+  clientId: string,
+  kind: "client-msg" | "client-doc",
+  summary: string,
+  makeTemplate: (firstName: string) => {
+    subject: string;
+    text: string;
+    html: string;
+  },
+): Promise<void> {
+  try {
+    if (!emailConfigured()) return;
+    const now = new Date().toISOString();
+    const dedupeKey = `${kind}:${clientId}:${now.slice(0, 13)}`;
+    const logRecords = await listAll(config, TABLES.automationLog, true);
+    if (
+      logRecords.some(
+        (record) => str(record, AUTOMATION_F.dedupeKey) === dedupeKey,
+      )
+    ) {
+      return;
+    }
+
+    const contact = await getClientContact(config, clientId);
+    if (!contact || !contact.email) return;
+    const firstName = contact.contactName.split(" ")[0] || "there";
+    const tpl = makeTemplate(firstName);
+    const result = await send({
+      to: contact.email,
+      subject: tpl.subject,
+      text: tpl.text,
+      html: tpl.html,
+    });
+
+    await createRecords(config, TABLES.automationLog, [
+      {
+        [AUTOMATION_F.summary]: `${summary} (${contact.company})`,
+        [AUTOMATION_F.client]: [clientId],
+        [AUTOMATION_F.event]: "client-alert",
+        [AUTOMATION_F.channel]: result.sent ? "email" : "portal",
+        [AUTOMATION_F.recipient]: contact.email,
+        [AUTOMATION_F.dedupeKey]: dedupeKey,
+        [AUTOMATION_F.sentAt]: now,
+      },
+    ]);
+  } catch (error) {
+    console.error("[onboarding/airtable] client nudge failed:", error);
+  }
+}
+
+/**
+ * Staff shared a document: light the client's bell and (hourly-throttled)
+ * email them, so a batch of files lands as one notification set.
+ */
+export async function notifyClientDocumentShared(
+  config: AirtableConfig,
+  clientId: string,
+  documentName: string,
+): Promise<void> {
+  await createRecords(config, TABLES.notifications, [
+    {
+      [NOTIF_F.text]: `We've added "${documentName}" to your documents.`,
+      [NOTIF_F.client]: [clientId],
+      [NOTIF_F.kind]: "progress",
+      [NOTIF_F.created]: new Date().toISOString(),
+    },
+  ]).catch((error) => {
+    console.error("[onboarding/airtable] doc-share notification failed:", error);
+  });
+  await maybeEmailClientHourly(
+    config,
+    clientId,
+    "client-doc",
+    "Emailed client: new document",
+    clientDocumentEmail,
+  );
 }
 
 /** Append an engagement signal and bump the client's Last Active. */
@@ -1964,6 +2052,15 @@ export async function sendMessage(
       // The message is what matters; a missed nudge isn't worth a failure.
       console.error("[onboarding/airtable] message notification failed:", error);
     });
+    // And an email so they hear about it away from the portal — one per
+    // hour max, so a back-and-forth doesn't fill their inbox.
+    await maybeEmailClientHourly(
+      config,
+      clientId,
+      "client-msg",
+      "Emailed client: new message",
+      clientMessageEmail,
+    );
   }
 }
 

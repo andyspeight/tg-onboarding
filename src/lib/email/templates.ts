@@ -152,6 +152,42 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
+export function clientMessageEmail(firstName: string): Template {
+  const threadUrl = `${APP_BASE}/messages`;
+  const subject = "You've got a message from your Travelgenix team";
+  const text = `Hi ${firstName},
+
+Your Travelgenix team has sent you a message in your onboarding portal.
+
+Read and reply here: ${threadUrl}
+
+The Travelgenix team`;
+  const html = shell(
+    `<p style="margin:0 0 14px;font-size:16px;font-weight:700;">A message from your team, ${firstName}</p>
+<p style="margin:0 0 20px;font-size:14px;line-height:1.6;">Your Travelgenix team has sent you a message in your onboarding portal. Pop in whenever suits to read and reply.</p>
+<p style="margin:0;">${button(threadUrl, "Read the message")}</p>`,
+  );
+  return { subject, text, html };
+}
+
+export function clientDocumentEmail(firstName: string): Template {
+  const documentsUrl = `${APP_BASE}/documents`;
+  const subject = "Something new in your documents";
+  const text = `Hi ${firstName},
+
+We've added something new to the documents in your onboarding portal.
+
+Take a look here: ${documentsUrl}
+
+The Travelgenix team`;
+  const html = shell(
+    `<p style="margin:0 0 14px;font-size:16px;font-weight:700;">Something new for you, ${firstName}</p>
+<p style="margin:0 0 20px;font-size:14px;line-height:1.6;">We've added something new to the documents in your onboarding portal. Take a look whenever suits.</p>
+<p style="margin:0;">${button(documentsUrl, "Open your documents")}</p>`,
+  );
+  return { subject, text, html };
+}
+
 export function activityAlertEmail(
   managerName: string,
   company: string,

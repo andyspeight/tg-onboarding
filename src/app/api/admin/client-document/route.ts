@@ -3,6 +3,7 @@ import {
   airtableConfig,
   clientExists,
   createClientDocumentWithFile,
+  notifyClientDocumentShared,
 } from "@/lib/onboarding/airtable";
 import { adminSessionFromRequest } from "@/lib/api/admin-auth";
 import { guardPost, isRecordId, jsonError } from "@/lib/api/guard";
@@ -79,6 +80,8 @@ export async function POST(request: Request) {
       category: body.category,
       status: "available",
     });
+    // Bell + (hourly-throttled) email so the client hears about it.
+    await notifyClientDocumentShared(config, body.clientId, name);
     revalidatePath(`/admin/clients/${body.clientId}`);
     revalidatePath("/documents");
     return Response.json({ ok: true });
