@@ -1137,6 +1137,25 @@ export async function setTaskDueDate(
   return true;
 }
 
+/**
+ * Staff-only: set any task's status. Unlike the client's setTaskStatus this
+ * has no owner/audience restriction — staff drive Travelgenix-owned tasks so
+ * the client can watch progress, and can correct any row. Returns false when
+ * the task doesn't exist.
+ */
+export async function setTaskStatusAsStaff(
+  config: AirtableConfig,
+  taskId: string,
+  status: TaskStatus,
+): Promise<boolean> {
+  const task = await getRecord(config, TABLES.tasks, taskId);
+  if (!task) return false;
+  await updateRecord(config, TABLES.tasks, taskId, {
+    [TASK_F.status]: status,
+  });
+  return true;
+}
+
 /** Upsert one intake section's answers as one row per field. */
 export async function saveIntakeResponses(
   config: AirtableConfig,

@@ -67,13 +67,14 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
   const { summary } = detail;
   const [tab, setTab] = useState<TabId>("journey");
   const [docTab, setDocTab] = useState<"client" | "tg">("client");
-  // Staff-edited due dates, optimistic; rolls back if the save fails.
+  // Staff-edited due dates and statuses, optimistic; roll back if a save fails.
   const [dues, setDues] = useState<Record<string, string>>({});
-  const [dueError, setDueError] = useState<string | null>(null);
+  const [statuses, setStatuses] = useState<Record<string, string>>({});
+  const [editError, setEditError] = useState<string | null>(null);
 
   function saveDueDate(taskId: string, previous: string, next: string) {
     setDues((prev) => ({ ...prev, [taskId]: next }));
-    setDueError(null);
+    setEditError(null);
     fetch("/api/admin/task-due", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -84,7 +85,24 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
       })
       .catch(() => {
         setDues((prev) => ({ ...prev, [taskId]: previous }));
-        setDueError("That due date didn’t save. Try again in a moment.");
+        setEditError("That due date didn’t save. Try again in a moment.");
+      });
+  }
+
+  function saveStatus(taskId: string, previous: string, next: string) {
+    setStatuses((prev) => ({ ...prev, [taskId]: next }));
+    setEditError(null);
+    fetch("/api/admin/task-status", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taskId, status: next }),
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error(String(response.status));
+      })
+      .catch(() => {
+        setStatuses((prev) => ({ ...prev, [taskId]: previous }));
+        setEditError("That status change didn’t save. Try again in a moment.");
       });
   }
 
@@ -227,7 +245,7 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
       {tab === "journey" && (
         <section>
           <p aria-live="polite" className="mb-2 text-[12px] font-medium text-danger">
-            {dueError}
+            {editError}
           </p>
           <div className="space-y-3">
             {detail.phases.map((phase) => (
@@ -292,11 +310,22 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
                               Internal
                             </span>
                           )}
-                          <span
-                            className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${STATUS_CLS[task.status]}`}
+                          <select
+                            value={statuses[task.id] ?? task.status}
+                            onChange={(event) =>
+                              saveStatus(
+                                task.id,
+                                statuses[task.id] ?? task.status,
+                                event.target.value,
+                              )
+                            }
+                            aria-label={`Status for ${task.title}`}
+                            className={`press shrink-0 cursor-pointer rounded-full border-0 py-1 pl-2.5 pr-1 text-[10px] font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-accent-bright/30 ${STATUS_CLS[statuses[task.id] ?? task.status]}`}
                           >
-                            {task.status === "in-progress" ? "In progress" : task.status === "done" ? "Done" : "To do"}
-                          </span>
+                            <option value="todo">To do</option>
+                            <option value="in-progress">In progress</option>
+                            <option value="done">Done</option>
+                          </select>
                         </div>
                       </li>
                     );

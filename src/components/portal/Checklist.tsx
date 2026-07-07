@@ -20,6 +20,17 @@ const OWNER_META: Record<TaskOwner, { label: string; cls: string }> = {
   both: { label: "Both", cls: "bg-info-soft text-info" },
 };
 
+/**
+ * Spelled-out status for tasks Travelgenix drives — the client reads these
+ * rather than tapping them, so the word makes "what we're doing" explicit
+ * alongside the status icon.
+ */
+const STATUS_META: Record<TaskStatus, { label: string; cls: string }> = {
+  todo: { label: "To do", cls: "bg-bg-subtle text-fg-muted" },
+  "in-progress": { label: "In progress", cls: "bg-info-soft text-info" },
+  done: { label: "Done", cls: "bg-success-soft text-success" },
+};
+
 /** Tri-state status circle from the prototype: ring, dashed ring + dot, tick. */
 function StatusIcon({ status }: { status: TaskStatus }) {
   return (
@@ -155,6 +166,13 @@ export function Checklist({ tasks, asOf, onCycle }: ChecklistProps) {
                 >
                   {owner.label}
                 </span>
+                {!interactive && (
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_META[task.status].cls}`}
+                  >
+                    {STATUS_META[task.status].label}
+                  </span>
+                )}
                 <DueLabel task={task} asOf={asOf} />
               </span>
             </span>
