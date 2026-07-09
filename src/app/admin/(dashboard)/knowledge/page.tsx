@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { KnowledgeAdmin } from "@/components/admin/KnowledgeAdmin";
-import { fetchAdminKnowledge } from "@/lib/onboarding/airtable";
+import { LunaReviewToggle } from "@/components/admin/LunaReviewToggle";
+import {
+  airtableConfig,
+  fetchAdminKnowledge,
+  lunaReviewModeEnabled,
+} from "@/lib/onboarding/airtable";
 
 export const metadata: Metadata = {
   title: "Knowledge base · Travelgenix onboarding",
@@ -8,7 +13,11 @@ export const metadata: Metadata = {
 };
 
 export default async function KnowledgePage() {
-  const articles = await fetchAdminKnowledge();
+  const config = airtableConfig();
+  const [articles, reviewMode] = await Promise.all([
+    fetchAdminKnowledge(),
+    config ? lunaReviewModeEnabled(config) : Promise.resolve(false),
+  ]);
 
   return (
     <div className="anim-fade-up">
@@ -21,6 +30,10 @@ export default async function KnowledgePage() {
         client should read it. Anything not covered here goes to a human
         untouched.
       </p>
+
+      <div className="mt-6">
+        <LunaReviewToggle initial={reviewMode} />
+      </div>
 
       <div className="mt-6">
         {articles ? (

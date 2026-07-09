@@ -68,6 +68,8 @@ const TABLES = {
   automationLog: "tbl6JmGMnuRvHbYuc",
   messages: "tblClvD9i8QPZJwVS",
   knowledgeBase: "tbl02IR9iQtRxAV28",
+  appSettings: "tblQlytkDJz73IGDr",
+  lunaDrafts: "tblxuKyS9VIOIyJIh",
 };
 
 const MSG_F = {
@@ -87,6 +89,19 @@ const KB_F = {
   keywords: "fldGICA3THYD3Kahv",
   category: "fld6rQqkyObQ9xw44",
   active: "fld5wtLBsTHepOtWI",
+};
+
+const SETTINGS_F = {
+  setting: "fldH1CT1d1iGLAM46",
+  lunaReviewMode: "fldegVfmrhNRezOVI",
+};
+
+const DRAFT_F = {
+  summary: "fldCa7AUKiQ0Hddrt",
+  client: "fldNWv4LhoRMBfVQf",
+  question: "fldvbx2TCIKFqspMR",
+  body: "fldd6SNr1grjxIpP3",
+  created: "fldXahYRJYaaqwzLY",
 };
 
 type MessageSender = "team" | "client" | "luna";
@@ -1673,12 +1688,14 @@ export async function fetchAdminClientDetail(
       trainingRecords,
       completionRecords,
       messageRecords,
+      draftRecords,
     ] = await Promise.all([
       listAll(config, TABLES.confidenceRatings),
       listAll(config, TABLES.documents),
       listAll(config, TABLES.training),
       listAll(config, TABLES.trainingCompletions),
       listAll(config, TABLES.messages),
+      listAll(config, TABLES.lunaDrafts),
     ]);
 
     const today = ukToday();
@@ -1814,6 +1831,20 @@ export async function fetchAdminClientDetail(
         attachments: messageAttachments(record),
       }));
 
+    const drafts = draftRecords
+      .filter((record) => links(record, DRAFT_F.client).includes(clientId))
+      .sort(
+        (a, b) =>
+          Date.parse(str(a, DRAFT_F.created)) -
+          Date.parse(str(b, DRAFT_F.created)),
+      )
+      .map((record) => ({
+        id: record.id,
+        question: str(record, DRAFT_F.question),
+        body: str(record, DRAFT_F.body),
+        whenLabel: relativeLabel(str(record, DRAFT_F.created), nowMs),
+      }));
+
     return {
       summary,
       contactEmail: str(clientRecord, CLIENT_F.email) || undefined,
@@ -1825,6 +1856,7 @@ export async function fetchAdminClientDetail(
       intake,
       training,
       messages,
+      drafts,
       portalAccess: {
         codeIssuedAt: str(clientRecord, CLIENT_F.codeIssuedAt) || undefined,
         lastLoginAt: str(clientRecord, CLIENT_F.lastLoginAt) || undefined,
@@ -2120,6 +2152,127 @@ export async function markMessagesRead(
       })),
     );
   }
+}
+
+/* ------------------------------------------------------------------------ */
+/* Luna review mode + drafts — human-in-the-loop before a reply reaches the  */
+/* client. When review mode is on, Luna's answer is parked as a draft the AM  */
+/* edits and releases, rather than sent straight to the thread.              */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * Is Luna in review-before-send mode? Reads the single App Settings row.
+ * Fails safe to false (Luna auto-sends, the original behaviour) so a settings
+ * read hiccup never strands a client without an answer.
+ */
+export async function lunaReviewModeEnabled(
+  config: AirtableConfig,
+): Promise<boolean> {
+  try {
+    const records = await listAll(config, TABLES.appSettings);
+    return bool(records[0] ?? { id: "", fields: {} }, SETTINGS_F.lunaReviewMode);
+  } catch (error) {
+    console.error("[onboarding/airtable] review-mode read failed:", error);
+    return false;
+  }
+}
+
+/** Flip review mode on the settings row, creating it if it's somehow gone. */
+export async function setLunaReviewMode(
+  config: AirtableConfig,
+  enabled: boolean,
+): Promise<void> {
+  const records = await listAll(config, TABLES.appSettings);
+  const existing = records[0];
+  if (existing) {
+    await updateRecord(config, TABLES.appSettings, existing.id, {
+      [SETTINGS_F.lunaReviewMode]: enabled,
+    });
+    return;
+  }
+  await createRecords(config, TABLES.appSettings, [
+    {
+      [SETTINGS_F.setting]: "Portal settings",
+      [SETTINGS_F.lunaReviewMode]: enabled,
+    },
+  ]);
+}
+
+/** Park a Luna answer for AM review instead of sending it to the client. */
+export async function createLunaDraft(
+  config: AirtableConfig,
+  clientId: string,
+  question: string,
+  body: string,
+): Promise<void> {
+  await createRecords(config, TABLES.lunaDrafts, [
+    {
+      [DRAFT_F.summary]: body.replace(/\s+/g, " ").slice(0, 60),
+      [DRAFT_F.client]: [clientId],
+      [DRAFT_F.question]: question,
+      [DRAFT_F.body]: body,
+      [DRAFT_F.created]: new Date().toISOString(),
+    },
+  ]);
+}
+
+export interface LunaDraft {
+  id: string;
+  question: string;
+  body: string;
+  createdAt: string;
+}
+
+/** Pending Luna drafts for one client, oldest first. */
+export async function fetchLunaDrafts(
+  config: AirtableConfig,
+  clientId: string,
+): Promise<LunaDraft[]> {
+  const records = await listAll(config, TABLES.lunaDrafts);
+  return records
+    .filter((record) => links(record, DRAFT_F.client).includes(clientId))
+    .sort(
+      (a, b) =>
+        Date.parse(str(a, DRAFT_F.created)) - Date.parse(str(b, DRAFT_F.created)),
+    )
+    .map((record) => ({
+      id: record.id,
+      question: str(record, DRAFT_F.question),
+      body: str(record, DRAFT_F.body),
+      createdAt: str(record, DRAFT_F.created),
+    }));
+}
+
+/** Discard a draft without sending — the AM would rather write their own. */
+export async function discardLunaDraft(
+  config: AirtableConfig,
+  draftId: string,
+): Promise<boolean> {
+  const draft = await getRecord(config, TABLES.lunaDrafts, draftId);
+  if (!draft) return false;
+  await deleteRecord(config, TABLES.lunaDrafts, draftId);
+  return true;
+}
+
+/**
+ * Release a reviewed draft: send the (possibly edited) text to the client as
+ * a normal team reply — reusing the bell notification and hourly email — then
+ * clear the draft. Sending as "team", not "luna", so it reads as a human reply
+ * and the client's unread badge lights up (Luna messages count as pre-read).
+ */
+export async function sendLunaDraft(
+  config: AirtableConfig,
+  draftId: string,
+  body: string,
+): Promise<boolean> {
+  const draft = await getRecord(config, TABLES.lunaDrafts, draftId);
+  if (!draft) return false;
+  const clientId = firstLink(draft, DRAFT_F.client);
+  if (!clientId) return false;
+
+  await sendMessage(config, clientId, "team", body);
+  await deleteRecord(config, TABLES.lunaDrafts, draftId);
+  return true;
 }
 
 /* ------------------------------------------------------------------------ */

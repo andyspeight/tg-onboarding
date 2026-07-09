@@ -171,6 +171,15 @@ export interface AdminDetailMessage {
   attachments?: { url: string; filename: string; isImage: boolean }[];
 }
 
+/** A Luna answer parked for AM review before it reaches the client. */
+export interface AdminDetailDraft {
+  id: string;
+  /** The client message Luna was answering. */
+  question: string;
+  body: string;
+  whenLabel: string;
+}
+
 export interface AdminClientDetail {
   summary: AdminClientSummary;
   contactEmail?: string;
@@ -183,6 +192,8 @@ export interface AdminClientDetail {
   training: AdminDetailTraining[];
   /** Thread oldest-first, capped to the recent window. */
   messages: AdminDetailMessage[];
+  /** Luna answers awaiting review — only populated in review-before-send mode. */
+  drafts: AdminDetailDraft[];
   /** Portal login state — staff issue and rotate codes from the detail page. */
   portalAccess: { codeIssuedAt?: string; lastLoginAt?: string };
 }

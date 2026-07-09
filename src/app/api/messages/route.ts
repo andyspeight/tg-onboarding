@@ -2,8 +2,10 @@ import { revalidatePath } from "next/cache";
 import {
   airtableConfig,
   countTeamUnread,
+  createLunaDraft,
   fetchActiveKnowledge,
   getRecord,
+  lunaReviewModeEnabled,
   recordSignalAndTouch,
   sendMessage,
 } from "@/lib/onboarding/airtable";
@@ -58,12 +60,20 @@ export async function POST(request: Request) {
     await recordSignalAndTouch(config, clientId, "message-sent", "");
 
     // Luna takes first crack when there's an actual question to answer.
+    // In review-before-send mode she still drafts, but the answer is parked
+    // for an AM to check and release rather than sent to the client.
     let luna: string | null = null;
     if (text.length > 0) {
       try {
-        const articles = await fetchActiveKnowledge(config);
+        const [articles, reviewMode] = await Promise.all([
+          fetchActiveKnowledge(config),
+          lunaReviewModeEnabled(config),
+        ]);
         const reply = await lunaAnswer(text, articles);
-        if (reply) {
+        if (reply && reviewMode) {
+          await createLunaDraft(config, clientId, text, reply.body);
+          console.log(`[api/messages] luna drafted (review) via ${reply.via}`);
+        } else if (reply) {
           await sendMessage(config, clientId, "luna", reply.body);
           luna = reply.body;
           console.log(`[api/messages] luna answered via ${reply.via}`);

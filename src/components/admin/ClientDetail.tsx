@@ -534,6 +534,7 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
           <ClientMessages
             clientId={summary.id}
             messages={detail.messages}
+            drafts={detail.drafts}
             contactName={summary.contactName}
           />
         </section>
