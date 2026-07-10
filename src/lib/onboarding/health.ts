@@ -150,6 +150,8 @@ export interface AdminDetailDocument {
 }
 
 export interface AdminDetailIntakeSection {
+  /** Section slug — matches the intake-saved signal detail, for deep links. */
+  id: string;
   title: string;
   fields: { label: string; value: string }[];
 }

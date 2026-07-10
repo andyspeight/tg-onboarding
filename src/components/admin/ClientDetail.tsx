@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ProgressBar } from "@/components/ProgressBar";
 import { ClientMessages } from "@/components/admin/ClientMessages";
 import { ClientLogoCard } from "@/components/admin/ClientLogoCard";
@@ -45,12 +45,38 @@ function taskJump(task: {
   return null;
 }
 
-/** Where clicking a Recent Activity row should jump. */
-function signalJump(signal: string): TabId | null {
-  const s = signal.toLowerCase();
-  if (s.includes("document")) return "documents";
-  if (s.includes("intake")) return "intake";
-  if (s.includes("task")) return "journey";
+/** DOM-id-safe slug so a document name links to its own row. */
+function slug(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+/**
+ * Where clicking a Recent Activity row should land — the exact answer, file
+ * or task the signal is about, not just its tab. `anchor` is the DOM id we
+ * scroll to and flash; `docTab` picks the right Documents sub-tab first.
+ */
+function signalTarget(signal: {
+  signal: string;
+  detail: string;
+}): { tab: TabId; anchor: string; label: string; docTab?: "client" | "tg" } | null {
+  const s = signal.signal.toLowerCase();
+  if (s.includes("intake") && signal.detail) {
+    return { tab: "intake", anchor: `intake-${signal.detail}`, label: "View answer" };
+  }
+  if (s.includes("document") && signal.detail) {
+    return {
+      tab: "documents",
+      anchor: `doc-${slug(signal.detail)}`,
+      label: "View document",
+      docTab: "client",
+    };
+  }
+  if (s.includes("task") && signal.detail) {
+    return { tab: "journey", anchor: `task-${signal.detail}`, label: "View task" };
+  }
   return null;
 }
 
@@ -71,6 +97,24 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
   const [dues, setDues] = useState<Record<string, string>>({});
   const [statuses, setStatuses] = useState<Record<string, string>>({});
   const [editError, setEditError] = useState<string | null>(null);
+  // Deep link from Recent activity: which element to scroll to and flash.
+  const [jump, setJump] = useState<{ tab: TabId; anchor: string } | null>(null);
+
+  useEffect(() => {
+    if (!jump || tab !== jump.tab) return;
+    const el = document.getElementById(jump.anchor);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Clear the flash once it's had a moment; a missing anchor clears too.
+    const timer = setTimeout(() => setJump(null), 2500);
+    return () => clearTimeout(timer);
+  }, [jump, tab]);
+
+  /** Jump to the exact item a Recent activity row points at. */
+  function goToSignal(target: NonNullable<ReturnType<typeof signalTarget>>) {
+    if (target.docTab) setDocTab(target.docTab);
+    setTab(target.tab);
+    setJump({ tab: target.tab, anchor: target.anchor });
+  }
 
   function saveDueDate(taskId: string, previous: string, next: string) {
     setDues((prev) => ({ ...prev, [taskId]: next }));
@@ -113,6 +157,7 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
     (doc) => doc.category !== "Your uploads",
   );
   const shownDocs = docTab === "client" ? clientDocs : tgDocs;
+  const jumpAnchor = jump?.anchor;
 
   const tabs: { id: TabId; label: string; badge?: number }[] = [
     { id: "journey", label: "Journey" },
@@ -259,12 +304,13 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
                 <ul className="divide-y divide-border">
                   {phase.tasks.map((task) => {
                     const jump = taskJump(task);
+                    const flash = jumpAnchor === `task-${task.id}`;
                     return (
-                      <li key={task.id}>
+                      <li key={task.id} id={`task-${task.id}`}>
                         <div
-                          className={`flex items-center gap-3 px-4 py-2.5 ${
-                            jump ? "transition-colors hover:bg-surface-2" : ""
-                          }`}
+                          className={`flex items-center gap-3 px-4 py-2.5 transition-colors ${
+                            flash ? "bg-accent-soft ring-2 ring-inset ring-accent-bright" : ""
+                          } ${jump ? "hover:bg-surface-2" : ""}`}
                         >
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-[13px] font-medium text-fg">
@@ -374,7 +420,15 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
           <div className="overflow-hidden rounded-card border border-border bg-surface shadow-soft">
             <ul className="divide-y divide-border">
               {shownDocs.map((doc) => (
-                <li key={doc.id} className="flex items-center gap-3 px-4 py-2.5">
+                <li
+                  key={doc.id}
+                  id={`doc-${slug(doc.name)}`}
+                  className={`flex items-center gap-3 px-4 py-2.5 transition-colors ${
+                    jumpAnchor === `doc-${slug(doc.name)}`
+                      ? "bg-accent-soft ring-2 ring-inset ring-accent-bright"
+                      : ""
+                  }`}
+                >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[12px] font-medium text-fg">{doc.name}</p>
                     <p className="text-[11px] text-fg-faint">
@@ -422,8 +476,13 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
           <div className="space-y-3">
             {detail.intake.map((section) => (
               <div
-                key={section.title}
-                className="overflow-hidden rounded-card border border-border bg-surface shadow-soft"
+                key={section.id}
+                id={`intake-${section.id}`}
+                className={`overflow-hidden rounded-card border bg-surface shadow-soft transition-shadow ${
+                  jumpAnchor === `intake-${section.id}`
+                    ? "border-accent-bright ring-2 ring-accent-bright"
+                    : "border-border"
+                }`}
               >
                 <p className="border-b border-border px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-fg-muted">
                   {section.title}
@@ -453,7 +512,7 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
             <div className="overflow-hidden rounded-card border border-border bg-surface shadow-soft">
               <ul className="divide-y divide-border">
                 {detail.signals.map((signal) => {
-                  const jump = signalJump(signal.signal);
+                  const target = signalTarget(signal);
                   return (
                     <li key={signal.id}>
                       <div className="flex items-center gap-3 px-4 py-2.5">
@@ -464,13 +523,13 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
                             {signal.whenLabel}
                           </p>
                         </div>
-                        {jump && (
+                        {target && (
                           <button
                             type="button"
-                            onClick={() => setTab(jump)}
+                            onClick={() => goToSignal(target)}
                             className="press shrink-0 cursor-pointer rounded-md border border-border px-2 py-0.5 text-[10px] font-medium text-accent transition-colors hover:bg-accent-soft"
                           >
-                            {JUMP_LABEL[jump]} →
+                            {target.label} →
                           </button>
                         )}
                       </div>

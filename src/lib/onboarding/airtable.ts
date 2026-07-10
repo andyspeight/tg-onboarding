@@ -1788,6 +1788,7 @@ export async function fetchAdminClientDetail(
         !section.showForPlans ||
         (plan !== undefined && section.showForPlans.includes(plan)),
     ).map((section) => ({
+      id: section.id,
       title: section.title,
       fields: section.fields
         .filter((field) => field.type !== "upload")
