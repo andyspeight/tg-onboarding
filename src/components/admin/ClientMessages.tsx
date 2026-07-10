@@ -15,6 +15,8 @@ import {
 } from "@/lib/onboarding/uploads";
 
 const MAX_BODY_CHARS = 2000;
+/** Quick reactions for a fast, friendly reply — a thumbs up and friends. */
+const QUICK_EMOJI = ["👍", "🎉", "✅", "🙌", "😊", "🙏", "🚀", "👏"];
 
 /**
  * The team's side of one client's thread. Luna's instant answers appear
@@ -38,9 +40,17 @@ export function ClientMessages({
   const [file, setFile] = useState<ScreenedFile | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const markedRef = useRef(false);
+
+  function addEmoji(emoji: string) {
+    setDraft((prev) => (prev + emoji).slice(0, MAX_BODY_CHARS));
+    setEmojiOpen(false);
+    textareaRef.current?.focus();
+  }
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
@@ -194,6 +204,7 @@ export function ClientMessages({
           Reply to {contactName}
         </label>
         <textarea
+          ref={textareaRef}
           id={`reply-${clientId}`}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
@@ -244,6 +255,45 @@ export function ClientMessages({
             >
               <PaperclipIcon className="h-3.5 w-3.5" />
             </label>
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setEmojiOpen((open) => !open)}
+                aria-label="Add an emoji"
+                aria-expanded={emojiOpen}
+                className="press flex h-8 w-8 items-center justify-center rounded-md border border-border text-[15px] leading-none transition-colors hover:border-border-strong"
+              >
+                🙂
+              </button>
+              {emojiOpen && (
+                <>
+                  <button
+                    type="button"
+                    aria-hidden
+                    tabIndex={-1}
+                    onClick={() => setEmojiOpen(false)}
+                    className="fixed inset-0 z-10 cursor-default"
+                  />
+                  <div
+                    role="menu"
+                    className="absolute bottom-10 left-0 z-20 flex gap-1 rounded-lg border border-border bg-surface p-1.5 shadow-soft"
+                  >
+                    {QUICK_EMOJI.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        role="menuitem"
+                        onClick={() => addEmoji(emoji)}
+                        aria-label={`Add ${emoji}`}
+                        className="press flex h-8 w-8 items-center justify-center rounded-md text-[17px] leading-none transition-colors hover:bg-accent-soft"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
             <p
               aria-live="polite"
               className={`min-w-0 truncate text-[11px] ${error ? "font-medium text-danger" : "text-fg-faint"}`}
