@@ -632,7 +632,7 @@ export function makeMockJourney(): OnboardingJourney {
           {
             id: "p3-payments",
             title: "Confirm your payment gateway details",
-            description: "Sorted early so there's no scramble before launch.",
+            description: "Once you've chosen a payment provider, let us know in Messages and we'll help you get it set up.",
             audience: "client",
             owner: "client",
             status: "todo",
