@@ -76,14 +76,14 @@ export const INTAKE_SECTIONS: IntakeSection[] = [
         id: "trading-name",
         label: "Trading name",
         type: "text",
-        placeholder: "e.g. Wanderlust Travel",
+        placeholder: "e.g. Blue Sky Travel",
         required: true,
       },
       {
         id: "legal-name",
         label: "Legal company name (if different)",
         type: "text",
-        placeholder: "e.g. Wanderlust Travel Ltd",
+        placeholder: "e.g. Blue Sky Travel Ltd",
       },
       {
         id: "atol",
@@ -331,7 +331,7 @@ export const INTAKE_SECTIONS: IntakeSection[] = [
         id: "domain-name",
         label: "Your domain name",
         type: "text",
-        placeholder: "e.g. wanderlusttravel.co.uk",
+        placeholder: "e.g. blueskytravel.co.uk",
         required: true,
       },
       {
@@ -367,8 +367,9 @@ export const INTAKE_SECTIONS: IntakeSection[] = [
 /**
  * Seed journey for Phase 1. This stands in for whatever Airtable will return.
  *
- * The client is the spec's fictitious test client (Sarah Mitchell at
- * Wanderlust Travel, Boost package — see docs/phase-1-spec.md). Due dates are
+ * The client is a clearly-generic sample (Sample Travel Co, Boost package) —
+ * never a real client's name, so it can't be mistaken for one if this fallback
+ * ever renders. Due dates are
  * generated relative to today so the demo always reads mid-journey, and a few
  * `audience: "internal"` tasks prove the client view hides them (they belong
  * to Phase 2's staff dashboard).
@@ -391,7 +392,7 @@ export function makeMockJourney(): OnboardingJourney {
       {
         id: "mock-msg-1",
         from: "team",
-        body: "Hi Sarah — this is your direct line to us. Ask anything here, big or small, and one of the team will get back to you.",
+        body: "Hi there — this is your direct line to us. Ask anything here, big or small, and one of the team will get back to you.",
         whenLabel: "2h ago",
       },
     ],
@@ -420,17 +421,17 @@ export function makeMockJourney(): OnboardingJourney {
       })),
     ],
     client: {
-      company: "Wanderlust Travel",
-      contactName: "Sarah Mitchell",
+      company: "Sample Travel Co",
+      contactName: "Sample Client",
       plan: "Boost",
       onboardingStartedAt: day(-18),
-      accountManager: "Andy Speight",
+      accountManager: "Travelgenix",
     },
     notifications: [
       {
         id: "n1",
         kind: "progress",
-        text: "Andy has started building your homepage",
+        text: "Your team has started building your homepage",
         whenLabel: "1h ago",
         read: false,
       },
@@ -703,7 +704,7 @@ export function makeMockJourney(): OnboardingJourney {
           {
             id: "p4-session",
             title: "1-to-1 training session",
-            description: "A live session with Andy, shaped around how you'll actually work.",
+            description: "A live session with your team, shaped around how you'll actually work.",
             audience: "client",
             owner: "both",
             status: "todo",
