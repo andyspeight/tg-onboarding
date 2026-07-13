@@ -206,3 +206,20 @@ export const TASK_TEMPLATE: Record<number, TemplateTask[]> = {
     },
   ],
 };
+
+/**
+ * Canonical journey copy, keyed by task title — the single source of truth for
+ * task descriptions. The portal and staff views prefer these over any per-
+ * client value stored in Airtable, so wording tweaks ship in a commit and stay
+ * identical for every client instead of drifting record by record. A task
+ * whose title isn't here (a one-off, or one the template gives no copy) keeps
+ * whatever description its own record holds.
+ */
+export const TASK_DESCRIPTIONS: Record<string, string> = Object.fromEntries(
+  Object.values(TASK_TEMPLATE)
+    .flat()
+    .filter((task): task is TemplateTask & { description: string } =>
+      Boolean(task.description),
+    )
+    .map((task) => [task.title, task.description]),
+);

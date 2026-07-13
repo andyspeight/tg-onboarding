@@ -26,7 +26,7 @@ import {
   type TeamTaskUrgency,
 } from "./health";
 import { revalidateTag } from "next/cache";
-import { TASK_TEMPLATE } from "./task-template";
+import { TASK_DESCRIPTIONS, TASK_TEMPLATE } from "./task-template";
 import { emailConfigured, send } from "../email";
 import {
   activityAlertEmail,
@@ -619,7 +619,9 @@ export async function fetchJourneyFromAirtable(
       const task: OnboardingTask = {
         id: record.id,
         title: str(record, TASK_F.title),
-        description: str(record, TASK_F.description) || undefined,
+        description:
+          TASK_DESCRIPTIONS[str(record, TASK_F.title)] ??
+          (str(record, TASK_F.description) || undefined),
         audience: asAudience(str(record, TASK_F.audience)),
         owner: asOwner(str(record, TASK_F.owner)),
         status: asStatus(str(record, TASK_F.status)),
@@ -1727,7 +1729,9 @@ export async function fetchAdminClientDetail(
         .map((record) => ({
           id: record.id,
           title: str(record, TASK_F.title),
-          description: str(record, TASK_F.description) || undefined,
+          description:
+            TASK_DESCRIPTIONS[str(record, TASK_F.title)] ??
+            (str(record, TASK_F.description) || undefined),
           audience: asAudience(str(record, TASK_F.audience)),
           owner: asOwner(str(record, TASK_F.owner)),
           status: asStatus(str(record, TASK_F.status)),
