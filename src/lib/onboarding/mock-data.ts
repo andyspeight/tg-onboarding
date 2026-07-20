@@ -60,11 +60,12 @@ const HOLIDAY_TYPES = [
 ];
 
 /**
- * The smart intake form, adapted from the approved prototype. The Suppliers
- * section is tier-conditional: Spark clients don't manage their own supplier
- * feeds, so they never see it (filtering happens in `data.ts`). When Airtable
- * is connected, the supplier multi-select options are replaced by the live
- * Suppliers table; these lists are the offline fallback.
+ * The smart intake form, adapted from the approved prototype. Every client
+ * sees the same Suppliers section regardless of package. When Airtable is
+ * connected, the supplier multi-select options are replaced by the live
+ * Suppliers table; these lists are the offline fallback. (Section visibility
+ * can still be tier-gated via `showForPlans` — the Ignite-only B2B & membership
+ * section uses it — but suppliers are common to all.)
  */
 export const INTAKE_SECTIONS: IntakeSection[] = [
   {
@@ -166,7 +167,6 @@ export const INTAKE_SECTIONS: IntakeSection[] = [
     id: "suppliers",
     title: "Suppliers & integrations",
     description: "Which suppliers do you work with?",
-    showForPlans: ["Boost", "Ignite"],
     fields: [
       {
         id: "suppliers-package",

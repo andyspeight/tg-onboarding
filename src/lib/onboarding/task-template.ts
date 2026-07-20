@@ -4,10 +4,9 @@ import type { TaskAudience, TaskOwner } from "./types";
  * The journey template stamped out for every new client by the add-client
  * flow. Day offsets are from the client's start date and mirror the pacing
  * proven with the seed client. `forPlans` limits a task to the tiers it
- * applies to. Note: every package (Spark included) sends us their supplier
- * account details so we can connect the feeds — only the self-service supplier
- * picker in the intake form stays Boost/Ignite (Spark clients don't curate
- * their own supplier list; we set it up for them).
+ * applies to. Note: suppliers are common to every package — all clients get
+ * the "send us your supplier account details" task and see the same supplier
+ * options in the intake form, regardless of tier.
  */
 
 export interface TemplateTask {
