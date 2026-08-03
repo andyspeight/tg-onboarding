@@ -119,8 +119,13 @@ export function DocumentHub({
 
   // Anything the client uploads is filed under this category server-side.
   const UPLOAD_CATEGORY = "Your uploads";
-  const yourDocs = documents.filter((doc) => doc.category === UPLOAD_CATEGORY);
-  const providedDocs = documents.filter(
+  // Show everything newest-first so documents read in date order rather than
+  // arriving in whatever order the data layer returns them.
+  const sortedDocs = [...documents].sort(
+    (a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime(),
+  );
+  const yourDocs = sortedDocs.filter((doc) => doc.category === UPLOAD_CATEGORY);
+  const providedDocs = sortedDocs.filter(
     (doc) => doc.category !== UPLOAD_CATEGORY,
   );
   const providedCategories = [
