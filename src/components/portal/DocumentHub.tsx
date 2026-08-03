@@ -120,10 +120,16 @@ export function DocumentHub({
   // Anything the client uploads is filed under this category server-side.
   const UPLOAD_CATEGORY = "Your uploads";
   // Show everything newest-first so documents read in date order rather than
-  // arriving in whatever order the data layer returns them.
-  const sortedDocs = [...documents].sort(
-    (a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime(),
-  );
+  // arriving in whatever order the data layer returns them. `addedAt` is
+  // date-only, so a whole batch can share one day — fall back to the record's
+  // creation timestamp to keep same-day documents in a stable, sensible order.
+  const docTime = (doc: ClientDocument) =>
+    new Date(doc.createdAt ?? doc.addedAt).getTime();
+  const sortedDocs = [...documents].sort((a, b) => {
+    const byDate =
+      new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
+    return byDate !== 0 ? byDate : docTime(b) - docTime(a);
+  });
   const yourDocs = sortedDocs.filter((doc) => doc.category === UPLOAD_CATEGORY);
   const providedDocs = sortedDocs.filter(
     (doc) => doc.category !== UPLOAD_CATEGORY,

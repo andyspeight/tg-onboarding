@@ -683,6 +683,7 @@ export async function fetchJourneyFromAirtable(
       category: str(record, DOC_F.category),
       fileType: str(record, DOC_F.fileType),
       addedAt: str(record, DOC_F.added),
+      createdAt: record.createdTime,
       status:
         str(record, DOC_F.status) === "signed"
           ? "signed"

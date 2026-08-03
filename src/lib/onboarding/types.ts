@@ -167,6 +167,12 @@ export interface ClientDocument {
   fileType: string;
   /** ISO date. For `pending` documents this is the expected date. */
   addedAt: string;
+  /**
+   * Full ISO timestamp the record was created. Used only to break ties when
+   * ordering documents that share the same (date-only) `addedAt`, so a batch
+   * uploaded on one day still lists in a stable, true-to-upload order.
+   */
+  createdAt?: string;
   status: DocumentStatus;
   /** The stored file, for View/Download. Absent while a doc is pending. */
   url?: string;
