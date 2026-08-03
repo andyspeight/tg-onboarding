@@ -145,6 +145,8 @@ export interface AdminDetailDocument {
   category: string;
   status: string;
   addedAt: string;
+  /** Full ISO creation timestamp — tiebreak for same-day `addedAt` ordering. */
+  createdAt?: string;
   /** The stored file, for View/Download. Absent while a doc is pending. */
   url?: string;
 }

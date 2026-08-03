@@ -1776,6 +1776,7 @@ export async function fetchAdminClientDetail(
         category: str(record, DOC_F.category),
         status: str(record, DOC_F.status),
         addedAt: str(record, DOC_F.added),
+        createdAt: record.createdTime,
         url: firstAttachment(record.fields[DOC_F.file])?.url,
       }));
 

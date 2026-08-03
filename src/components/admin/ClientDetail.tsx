@@ -150,12 +150,23 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
       });
   }
 
-  const clientDocs = detail.documents.filter(
-    (doc) => doc.category === "Your uploads",
-  );
-  const tgDocs = detail.documents.filter(
-    (doc) => doc.category !== "Your uploads",
-  );
+  // Newest-first. `addedAt` is date-only, so fall back to the record's
+  // creation timestamp to keep same-day documents in a stable, sensible order
+  // rather than the arbitrary order the data layer returns them in.
+  const byNewest = (a: typeof detail.documents[number], b: typeof a) => {
+    const byDate = new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
+    if (byDate !== 0) return byDate;
+    return (
+      new Date(b.createdAt ?? b.addedAt).getTime() -
+      new Date(a.createdAt ?? a.addedAt).getTime()
+    );
+  };
+  const clientDocs = detail.documents
+    .filter((doc) => doc.category === "Your uploads")
+    .sort(byNewest);
+  const tgDocs = detail.documents
+    .filter((doc) => doc.category !== "Your uploads")
+    .sort(byNewest);
   const shownDocs = docTab === "client" ? clientDocs : tgDocs;
   const jumpAnchor = jump?.anchor;
 
