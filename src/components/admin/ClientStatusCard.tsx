@@ -4,9 +4,7 @@ import { useState } from "react";
 import {
   CLIENT_STATUS,
   CLIENT_STATUS_OPTIONS,
-  HOLD_EXPIRY_DAYS,
   isComplete,
-  isHold,
   type ClientStatus,
 } from "@/lib/onboarding/client-status";
 import { STATUS_META } from "@/components/admin/client-status-meta";
@@ -65,9 +63,7 @@ export function ClientStatusCard({
     ? "Reminders and wilting alerts run as normal."
     : isComplete(current)
       ? "Onboarding complete — this client has left the active dashboard and is never chased again."
-      : isHold(current)
-        ? `Chasing paused — no client reminders and no wilting alerts. Resumes automatically after ${HOLD_EXPIRY_DAYS} days if left unchanged.`
-        : "Chasing paused — no client reminders and no wilting alerts.";
+      : "Chasing paused — no client reminders and no wilting alerts. Stays paused until you change it back.";
 
   const whenLabel = savedAt
     ? new Date(savedAt).toLocaleDateString("en-GB", {
