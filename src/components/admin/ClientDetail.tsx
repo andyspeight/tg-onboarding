@@ -6,6 +6,8 @@ import { ClientMessages } from "@/components/admin/ClientMessages";
 import { ClientLogoCard } from "@/components/admin/ClientLogoCard";
 import { ClientDocumentUpload } from "@/components/admin/ClientDocumentUpload";
 import { PortalAccessCard } from "@/components/admin/PortalAccessCard";
+import { ClientStatusCard } from "@/components/admin/ClientStatusCard";
+import { STATUS_META } from "@/components/admin/client-status-meta";
 import type { AdminClientDetail } from "@/lib/onboarding/health";
 import { formatShortDate } from "@/lib/onboarding/dates";
 
@@ -213,6 +215,13 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
                     {summary.plan}
                   </span>
                 )}
+                {STATUS_META[summary.status].chip && (
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_META[summary.status].cls}`}
+                  >
+                    {STATUS_META[summary.status].chip}
+                  </span>
+                )}
               </p>
               <p className="mt-1 text-[13px] text-fg-muted">
                 {summary.contactName}
@@ -247,6 +256,13 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
           </div>
         </div>
       </section>
+
+      <ClientStatusCard
+        clientId={summary.id}
+        status={summary.status}
+        setBy={summary.statusSetBy}
+        setAt={summary.statusSetAt}
+      />
 
       <ClientLogoCard
         clientId={summary.id}

@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useState } from "react";
 import { ProgressBar } from "@/components/ProgressBar";
 import type { AdminClientSummary, HealthLevel } from "@/lib/onboarding/health";
+import { isComplete } from "@/lib/onboarding/client-status";
+import { STATUS_META } from "@/components/admin/client-status-meta";
+
+type FilterId = HealthLevel | "all" | "completed";
 
 const HEALTH_META: Record<
   HealthLevel,
@@ -22,12 +26,25 @@ const HEALTH_META: Record<
   },
 };
 
-const FILTERS: { id: HealthLevel | "all"; label: string }[] = [
+const BASE_FILTERS: { id: FilterId; label: string }[] = [
   { id: "all", label: "All" },
   { id: "green", label: "On track" },
   { id: "amber", label: "Slowing" },
   { id: "red", label: "At risk" },
 ];
+
+/** Short chip shown on a row for any status other than the default. */
+function StatusChip({ status }: { status: AdminClientSummary["status"] }) {
+  const meta = STATUS_META[status];
+  if (!meta.chip) return null;
+  return (
+    <span
+      className={`shrink-0 rounded-full px-1.5 py-px text-[9px] font-bold ${meta.cls}`}
+    >
+      {meta.chip}
+    </span>
+  );
+}
 
 function ClientAvatar({
   logoUrl,
@@ -67,26 +84,35 @@ function HealthDot({ health }: { health: HealthLevel }) {
 
 /** The wilting-watch overview: stats, alerts, and every client's health. */
 export function Overview({ clients }: { clients: AdminClientSummary[] }) {
-  const [filter, setFilter] = useState<HealthLevel | "all">("all");
+  const [filter, setFilter] = useState<FilterId>("all");
 
-  const atRisk = clients.filter((client) => client.health !== "green");
+  // "Website is live" clients have finished onboarding — they leave the active
+  // list (and its stats/filters) for their own Completed view.
+  const active = clients.filter((client) => !isComplete(client.status));
+  const completed = clients.filter((client) => isComplete(client.status));
+
+  const atRisk = active.filter((client) => client.health !== "green");
   const avgPct =
-    clients.length === 0
+    active.length === 0
       ? 0
       : Math.round(
-          clients.reduce((sum, client) => sum + client.pct, 0) / clients.length,
+          active.reduce((sum, client) => sum + client.pct, 0) / active.length,
         );
-  const overdueTotal = clients.reduce(
+  const overdueTotal = active.reduce(
     (sum, client) => sum + client.overdueCount,
     0,
   );
-  const unreadTotal = clients.reduce(
+  const unreadTotal = active.reduce(
     (sum, client) => sum + client.unreadMessages,
     0,
   );
 
+  const filters = completed.length
+    ? [...BASE_FILTERS, { id: "completed" as const, label: "Completed" }]
+    : BASE_FILTERS;
+
   const stats = [
-    { label: "Active onboardings", value: String(clients.length), cls: "text-accent" },
+    { label: "Active onboardings", value: String(active.length), cls: "text-accent" },
     { label: "Average progress", value: `${avgPct}%`, cls: "text-info" },
     {
       label: "At risk",
@@ -106,9 +132,11 @@ export function Overview({ clients }: { clients: AdminClientSummary[] }) {
   ];
 
   const visible =
-    filter === "all"
-      ? clients
-      : clients.filter((client) => client.health === filter);
+    filter === "completed"
+      ? completed
+      : filter === "all"
+        ? active
+        : active.filter((client) => client.health === filter);
 
   return (
     <div className="space-y-7">
@@ -163,22 +191,24 @@ export function Overview({ clients }: { clients: AdminClientSummary[] }) {
       <section className="anim-fade-up">
         <div className="mb-2.5 flex items-center justify-between gap-3">
           <h2 className="text-[13px] font-bold text-fg">All clients</h2>
-          <div role="group" aria-label="Filter clients by health" className="flex gap-1.5">
-            {FILTERS.map(({ id, label }) => {
-              const active = filter === id;
+          <div role="group" aria-label="Filter clients by health" className="flex flex-wrap gap-1.5">
+            {filters.map(({ id, label }) => {
+              const isActive = filter === id;
+              const count = id === "completed" ? completed.length : undefined;
               return (
                 <button
                   key={id}
                   type="button"
                   onClick={() => setFilter(id)}
-                  aria-pressed={active}
+                  aria-pressed={isActive}
                   className={`press h-8 cursor-pointer rounded-full border px-3 text-[12px] font-medium transition-colors ${
-                    active
+                    isActive
                       ? "border-accent bg-accent text-accent-contrast"
                       : "border-border bg-surface text-fg-muted hover:border-border-strong hover:text-fg"
                   }`}
                 >
                   {label}
+                  {count !== undefined ? ` (${count})` : ""}
                 </button>
               );
             })}
@@ -214,6 +244,7 @@ export function Overview({ clients }: { clients: AdminClientSummary[] }) {
                         {client.unreadMessages} new
                       </span>
                     )}
+                    <StatusChip status={client.status} />
                   </p>
                   <p className="text-[11px] text-fg-muted">
                     {client.contactName}

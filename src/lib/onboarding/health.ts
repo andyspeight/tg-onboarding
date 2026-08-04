@@ -26,6 +26,13 @@ export interface ClientHealthInput {
   overdueCount: number;
   dayCount: number;
   pct: number;
+  /**
+   * True while a chase-suppressing status is set (anything but "In progress").
+   * A parked client is quiet/overdue *by design*, so none of that should read
+   * as wilting — health stays green. The quiet counter keeps ticking on the
+   * summary for information; it just stops driving amber/red.
+   */
+  suppressed?: boolean;
 }
 
 export interface ClientHealth {
@@ -37,6 +44,11 @@ export interface ClientHealth {
 export function deriveHealth(input: ClientHealthInput): ClientHealth {
   const reasons: string[] = [];
   let health: HealthLevel = "green";
+
+  // Parked deliberately — never flag a suppressed client as slowing/at risk.
+  if (input.suppressed) {
+    return { health, reasons };
+  }
 
   const overdueLabel =
     input.overdueCount === 1 ? "1 task overdue" : `${input.overdueCount} tasks overdue`;
@@ -90,6 +102,11 @@ export interface AdminClientSummary {
   reasons: string[];
   /** The client's uploaded logo, shown as their dashboard avatar. */
   logoUrl?: string;
+  /** Chase-suppression status (effective — 30-day holds already resolved). */
+  status: import("./client-status").ClientStatus;
+  /** Who last set the status, and when — shown on the detail control. */
+  statusSetBy?: string;
+  statusSetAt?: string;
 }
 
 export type TeamTaskUrgency = "overdue" | "urgent" | "upcoming";

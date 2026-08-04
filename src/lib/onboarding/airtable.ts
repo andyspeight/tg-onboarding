@@ -25,6 +25,13 @@ import {
   type SupplierCategory,
   type TeamTaskUrgency,
 } from "./health";
+import {
+  effectiveStatus,
+  suppressesChasing,
+  CLIENT_STATUS,
+  HOLD_EXPIRY_DAYS,
+  type ClientStatus,
+} from "./client-status";
 import { revalidateTag } from "next/cache";
 import { TASK_DESCRIPTIONS, TASK_TEMPLATE } from "./task-template";
 import { emailConfigured, send } from "../email";
@@ -158,6 +165,9 @@ const CLIENT_F = {
   codeIssuedAt: "fldNqmk6H29F9KeB5",
   lastLoginAt: "fld3F5xoTxXJADpsr",
   logo: "fldtDq6IpOFDGvkNQ",
+  status: "fldZczf1urlmQO2u3",
+  statusSetBy: "fld7VSsbt4SQOmN1m",
+  statusSetAt: "fldyCPx1jdXcBXbsa",
 };
 
 const PHASE_F = {
@@ -1174,6 +1184,28 @@ export async function setTaskStatusAsStaff(
   return true;
 }
 
+/**
+ * Staff-only: set a client's chase-suppression status, stamping who changed it
+ * and when. `actor` is "Staff" today (shared-passcode gate has no per-user
+ * identity); it becomes the real user once Control SSO lands. The stamp also
+ * anchors the 30-day auto-resume of "On hold" states.
+ */
+export async function setClientStatusAsStaff(
+  config: AirtableConfig,
+  clientId: string,
+  status: ClientStatus,
+  actor: string,
+): Promise<boolean> {
+  const client = await getRecord(config, TABLES.clients, clientId);
+  if (!client) return false;
+  await updateRecord(config, TABLES.clients, clientId, {
+    [CLIENT_F.status]: status,
+    [CLIENT_F.statusSetBy]: actor,
+    [CLIENT_F.statusSetAt]: new Date().toISOString(),
+  });
+  return true;
+}
+
 /** Upsert one intake section's answers as one row per field. */
 export async function saveIntakeResponses(
   config: AirtableConfig,
@@ -1429,11 +1461,23 @@ function summariseClient(
   const intakePct =
     tierFields.length === 0 ? 0 : Math.round((answered / tierFields.length) * 100);
 
+  // Effective status resolves the 30-day auto-resume, so a lapsed hold reads
+  // as "In progress" and starts chasing again. A suppressed status keeps a
+  // deliberately-parked client off the wilting radar.
+  const setAtRaw = str(clientRecord, CLIENT_F.statusSetAt);
+  const { status } = effectiveStatus(
+    str(clientRecord, CLIENT_F.status),
+    setAtRaw,
+    nowMs,
+  );
+  const suppressed = suppressesChasing(status);
+
   const { health, reasons } = deriveHealth({
     daysQuiet,
     overdueCount,
     dayCount,
     pct,
+    suppressed,
   });
 
   return {
@@ -1451,6 +1495,9 @@ function summariseClient(
     health,
     reasons,
     logoUrl: clientLogoUrl(clientRecord, documentRecords, clientId),
+    status,
+    statusSetBy: str(clientRecord, CLIENT_F.statusSetBy) || undefined,
+    statusSetAt: setAtRaw || undefined,
   };
 }
 
@@ -2521,6 +2568,8 @@ export interface AutomationRunResult {
   alerts: number;
   emailsSent: number;
   skipped: number;
+  /** Holds that hit their 30-day expiry this run and auto-resumed to chasing. */
+  resumed: number;
 }
 
 function isoWeek(date: Date): string {
@@ -2544,6 +2593,7 @@ export async function runAutomation(): Promise<AutomationRunResult | null> {
     alerts: 0,
     emailsSent: 0,
     skipped: 0,
+    resumed: 0,
   };
 
   // UK working days only — no weekend nudges. (The cron sets the hour.)
@@ -2586,6 +2636,9 @@ export async function runAutomation(): Promise<AutomationRunResult | null> {
 
   const logRows: Record<string, unknown>[] = [];
   const notificationRows: Record<string, unknown>[] = [];
+  // Clients whose hold hit its 30-day expiry this run — flipped back to
+  // "In progress" durably so the dashboard and portal reflect the resume.
+  const resumeUpdates: { id: string; fields: Record<string, unknown> }[] = [];
 
   async function emailClient(
     clientId: string,
@@ -2632,6 +2685,46 @@ export async function runAutomation(): Promise<AutomationRunResult | null> {
       today,
       nowMs,
     );
+
+    // Chase suppression. A status other than "In progress" silences BOTH
+    // sides — no client reminders/milestones and no staff wilting alerts.
+    const setAtRaw = str(clientRecord, CLIENT_F.statusSetAt);
+    const { status: effStatus, expired } = effectiveStatus(
+      str(clientRecord, CLIENT_F.status),
+      setAtRaw,
+      nowMs,
+    );
+    // A hold that reached its 30-day expiry resumes chasing: flip the field
+    // back durably and drop a one-off note in the log so staff see it.
+    if (expired) {
+      const resumeKey = `hold-resumed:${clientId}:${setAtRaw}`;
+      if (!sentKeys.has(resumeKey)) {
+        sentKeys.add(resumeKey);
+        result.resumed += 1;
+        resumeUpdates.push({
+          id: clientId,
+          fields: {
+            [CLIENT_F.status]: CLIENT_STATUS.inProgress,
+            [CLIENT_F.statusSetBy]: "System — hold expired",
+            [CLIENT_F.statusSetAt]: new Date().toISOString(),
+          },
+        });
+        logRows.push({
+          [AUTOMATION_F.summary]: `Hold expired: ${summary.company} auto-resumed to In progress after ${HOLD_EXPIRY_DAYS} days`,
+          [AUTOMATION_F.client]: [clientId],
+          [AUTOMATION_F.event]: "hold-resumed",
+          [AUTOMATION_F.channel]: "portal",
+          [AUTOMATION_F.recipient]: staffAlertEmail ?? "(dashboard)",
+          [AUTOMATION_F.dedupeKey]: resumeKey,
+          [AUTOMATION_F.sentAt]: new Date().toISOString(),
+        });
+      }
+    }
+    // Still parked (or complete) → no chasing at all this run.
+    if (suppressesChasing(effStatus)) {
+      result.skipped += 1;
+      continue;
+    }
 
     // 1. Task reminders: client-owed, not done, due in 2 days or 1 day overdue.
     const clientTasks = taskRecords.filter(
@@ -2752,6 +2845,14 @@ export async function runAutomation(): Promise<AutomationRunResult | null> {
       config,
       TABLES.automationLog,
       logRows.slice(start, start + 10),
+    );
+  }
+  // Durably resume any holds that expired this run.
+  for (let start = 0; start < resumeUpdates.length; start += 10) {
+    await updateRecords(
+      config,
+      TABLES.clients,
+      resumeUpdates.slice(start, start + 10),
     );
   }
 
