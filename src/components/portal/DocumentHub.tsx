@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { UploadIcon } from "@/components/icons";
 import type { ClientDocument, DocumentStatus } from "@/lib/onboarding/types";
 import { formatShortDate } from "@/lib/onboarding/dates";
+import { inlineViewUrl } from "@/lib/onboarding/file-view";
 import {
   DOCUMENT_EXTENSIONS,
   postUpload,
@@ -281,7 +282,7 @@ export function DocumentHub({
                   fileType={doc.fileType}
                   meta={`Added ${formatShortDate(doc.addedAt)}`}
                   status={doc.status}
-                  viewUrl={doc.url}
+                  viewUrl={doc.url ? inlineViewUrl(doc.url, doc.name) : undefined}
                   downloadHref={
                     doc.url ? `/api/documents/download?id=${doc.id}` : undefined
                   }
@@ -313,7 +314,9 @@ export function DocumentHub({
                           fileType={doc.fileType}
                           meta={`${doc.status === "pending" ? "Expected" : "Added"} ${formatShortDate(doc.addedAt)}`}
                           status={doc.status}
-                          viewUrl={doc.url}
+                          viewUrl={
+                            doc.url ? inlineViewUrl(doc.url, doc.name) : undefined
+                          }
                           downloadHref={
                             doc.url
                               ? `/api/documents/download?id=${doc.id}`

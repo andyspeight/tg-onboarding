@@ -10,6 +10,7 @@ import { ClientStatusCard } from "@/components/admin/ClientStatusCard";
 import { STATUS_META } from "@/components/admin/client-status-meta";
 import type { AdminClientDetail } from "@/lib/onboarding/health";
 import { formatShortDate } from "@/lib/onboarding/dates";
+import { inlineViewUrl } from "@/lib/onboarding/file-view";
 
 const HEALTH_LABEL = { green: "On track", amber: "Slowing", red: "At risk" };
 const HEALTH_DOT = { green: "bg-success", amber: "bg-warning", red: "bg-danger" };
@@ -466,7 +467,7 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
                   {doc.url && (
                     <>
                       <a
-                        href={doc.url}
+                        href={inlineViewUrl(doc.url, doc.name)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="press shrink-0 cursor-pointer rounded-md border border-border px-2.5 py-1 text-[11px] font-medium text-fg-muted transition-colors hover:border-border-strong hover:text-fg"
