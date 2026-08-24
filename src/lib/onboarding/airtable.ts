@@ -30,6 +30,12 @@ import {
   suppressesChasing,
   type ClientStatus,
 } from "./client-status";
+import {
+  contractFromStored,
+  visibleIntakeSections,
+  CONTRACT_LABEL,
+  type ContractType,
+} from "./contract-type";
 import { revalidateTag } from "next/cache";
 import { TASK_DESCRIPTIONS, TASK_TEMPLATE } from "./task-template";
 import { emailConfigured, send } from "../email";
@@ -166,6 +172,7 @@ const CLIENT_F = {
   status: "fldZczf1urlmQO2u3",
   statusSetBy: "fld7VSsbt4SQOmN1m",
   statusSetAt: "fldyCPx1jdXcBXbsa",
+  contractType: "fldXl6OqKgmoM9eUg",
 };
 
 const PHASE_F = {
@@ -614,6 +621,7 @@ export async function fetchJourneyFromAirtable(
       company: str(clientRecord, CLIENT_F.company),
       contactName: str(clientRecord, CLIENT_F.contactName),
       plan: str(clientRecord, CLIENT_F.package) || undefined,
+      contractType: contractFromStored(str(clientRecord, CLIENT_F.contractType)),
       onboardingStartedAt: str(clientRecord, CLIENT_F.started) || undefined,
       accountManager: str(clientRecord, CLIENT_F.accountManager) || undefined,
     };
@@ -1390,6 +1398,7 @@ function summariseClient(
 ): AdminClientSummary {
   const clientId = clientRecord.id;
   const plan = str(clientRecord, CLIENT_F.package) || undefined;
+  const contractType = contractFromStored(str(clientRecord, CLIENT_F.contractType));
   const tasks = allTasks.filter((record) =>
     links(record, TASK_F.client).includes(clientId),
   );
@@ -1438,12 +1447,9 @@ function summariseClient(
     ? Math.max(0, Math.floor((nowMs - Date.parse(lastActive)) / 86_400_000))
     : 0;
 
-  // Intake completion against the sections this client's tier sees.
-  const tierFields = INTAKE_SECTIONS.filter(
-    (section) =>
-      !section.showForPlans ||
-      (plan !== undefined && section.showForPlans.includes(plan)),
-  )
+  // Intake completion against the sections/fields this client actually sees
+  // (their package tier and contract type both gate what's asked).
+  const tierFields = visibleIntakeSections(INTAKE_SECTIONS, plan, contractType)
     .flatMap((section) => section.fields)
     .filter((field) => field.type !== "upload");
   const answeredIds = new Set(
@@ -1478,6 +1484,7 @@ function summariseClient(
     company: str(clientRecord, CLIENT_F.company),
     contactName: str(clientRecord, CLIENT_F.contactName),
     plan,
+    contractType,
     pct,
     phaseTitle: currentPhase ? str(currentPhase, PHASE_F.title) : "Complete",
     dayCount,
@@ -1829,10 +1836,10 @@ export async function fetchAdminClientDetail(
           str(record, RESPONSE_F.value),
         ]),
     );
-    const intake = INTAKE_SECTIONS.filter(
-      (section) =>
-        !section.showForPlans ||
-        (plan !== undefined && section.showForPlans.includes(plan)),
+    const intake = visibleIntakeSections(
+      INTAKE_SECTIONS,
+      plan,
+      summary.contractType,
     ).map((section) => ({
       id: section.id,
       title: section.title,
@@ -2438,6 +2445,7 @@ export interface NewClientInput {
   contactName: string;
   contactEmail: string;
   plan: string;
+  contractType: ContractType;
   accountManager: string;
   startDate: string;
 }
@@ -2467,6 +2475,7 @@ export async function createClientWithJourney(
             [CLIENT_F.contactName]: input.contactName,
             [CLIENT_F.email]: input.contactEmail,
             [CLIENT_F.package]: input.plan,
+            [CLIENT_F.contractType]: CONTRACT_LABEL[input.contractType],
             [CLIENT_F.started]: input.startDate,
             [CLIENT_F.accountManager]: input.accountManager,
           },
@@ -2489,7 +2498,8 @@ export async function createClientWithJourney(
     templates
       .filter(
         (template) =>
-          !template.forPlans || template.forPlans.includes(input.plan),
+          (!template.forPlans || template.forPlans.includes(input.plan)) &&
+          !template.hideForContract?.includes(input.contractType),
       )
       .forEach((template, index) => {
         taskRows.push({

@@ -1,4 +1,4 @@
-import type { TaskAudience, TaskOwner } from "./types";
+import type { ContractType, TaskAudience, TaskOwner } from "./types";
 
 /**
  * The journey template stamped out for every new client by the add-client
@@ -18,6 +18,8 @@ export interface TemplateTask {
   dueOffsetDays?: number;
   optional?: boolean;
   forPlans?: string[];
+  /** Contract types this task is NOT stamped for (e.g. ["widget"]). */
+  hideForContract?: ContractType[];
 }
 
 /** Keyed by phase number (1–6). Welcome & Kickoff was retired — clients only
@@ -45,6 +47,7 @@ export const TASK_TEMPLATE: Record<number, TemplateTask[]> = {
       audience: "client",
       owner: "client",
       dueOffsetDays: 10,
+      hideForContract: ["widget"],
     },
     {
       title: "Confirm your domain name",
@@ -65,6 +68,7 @@ export const TASK_TEMPLATE: Record<number, TemplateTask[]> = {
       audience: "client",
       owner: "travelgenix",
       dueOffsetDays: 21,
+      hideForContract: ["widget"],
     },
     {
       title: "Configure your search widgets",
@@ -95,6 +99,7 @@ export const TASK_TEMPLATE: Record<number, TemplateTask[]> = {
       audience: "client",
       owner: "client",
       dueOffsetDays: 26,
+      hideForContract: ["widget"],
     },
     {
       title: "Set your target go-live date",
@@ -145,6 +150,7 @@ export const TASK_TEMPLATE: Record<number, TemplateTask[]> = {
       audience: "client",
       owner: "client",
       dueOffsetDays: 39,
+      hideForContract: ["widget"],
     },
     {
       title: "Test your booking flow end-to-end",

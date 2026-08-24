@@ -5,6 +5,7 @@ import {
 } from "@/lib/onboarding/airtable";
 import { adminSessionFromRequest } from "@/lib/api/admin-auth";
 import { guardPost, jsonError } from "@/lib/api/guard";
+import { isContractType } from "@/lib/onboarding/contract-type";
 
 const PLANS = ["Spark", "Boost", "Ignite"];
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -32,6 +33,8 @@ export async function POST(request: Request) {
   const accountManager = cleanText(body.accountManager, 100) ?? "Andy Speight";
   const plan = body.plan;
   const startDate = body.startDate;
+  // Legacy callers that predate contract type default to a full website.
+  const contractType = body.contractType ?? "full";
 
   if (
     !company ||
@@ -40,6 +43,8 @@ export async function POST(request: Request) {
     !EMAIL_PATTERN.test(contactEmail) ||
     typeof plan !== "string" ||
     !PLANS.includes(plan) ||
+    typeof contractType !== "string" ||
+    !isContractType(contractType) ||
     typeof startDate !== "string" ||
     !DATE_PATTERN.test(startDate) ||
     Number.isNaN(Date.parse(startDate))
@@ -56,6 +61,7 @@ export async function POST(request: Request) {
       contactName,
       contactEmail,
       plan,
+      contractType,
       accountManager,
       startDate,
     };

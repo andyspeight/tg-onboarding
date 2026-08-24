@@ -11,6 +11,7 @@ import { STATUS_META } from "@/components/admin/client-status-meta";
 import type { AdminClientDetail } from "@/lib/onboarding/health";
 import { formatShortDate } from "@/lib/onboarding/dates";
 import { inlineViewUrl } from "@/lib/onboarding/file-view";
+import { CONTRACT_LABEL } from "@/lib/onboarding/contract-type";
 
 const HEALTH_LABEL = { green: "On track", amber: "Slowing", red: "At risk" };
 const HEALTH_DOT = { green: "bg-success", amber: "bg-warning", red: "bg-danger" };
@@ -221,6 +222,11 @@ export function ClientDetail({ detail }: { detail: AdminClientDetail }) {
                     className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_META[summary.status].cls}`}
                   >
                     {STATUS_META[summary.status].chip}
+                  </span>
+                )}
+                {summary.contractType === "widget" && (
+                  <span className="rounded-full bg-info-soft px-2 py-0.5 text-[10px] font-semibold text-info">
+                    {CONTRACT_LABEL.widget}
                   </span>
                 )}
               </p>

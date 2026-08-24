@@ -8,6 +8,7 @@ import {
   clientIdFromToken,
 } from "@/lib/api/client-auth";
 import { makeMockJourney } from "./mock-data";
+import { visibleIntakeSections } from "./contract-type";
 import type { OnboardingJourney } from "./types";
 
 /**
@@ -50,7 +51,7 @@ const getJourney = cache(async (): Promise<OnboardingJourney> => {
  */
 export async function getClientJourney(): Promise<OnboardingJourney> {
   const journey = await getJourney();
-  const plan = journey.client.plan;
+  const { plan, contractType } = journey.client;
 
   return {
     ...journey,
@@ -58,10 +59,8 @@ export async function getClientJourney(): Promise<OnboardingJourney> {
       ...phase,
       tasks: phase.tasks.filter((task) => task.audience === "client"),
     })),
-    intake: journey.intake.filter(
-      (section) =>
-        !section.showForPlans ||
-        (plan !== undefined && section.showForPlans.includes(plan)),
-    ),
+    // Strip sections/fields this client's tier or contract doesn't include, so
+    // the widget-only intake never reaches the browser.
+    intake: visibleIntakeSections(journey.intake, plan, contractType ?? "full"),
   };
 }

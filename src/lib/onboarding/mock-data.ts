@@ -150,6 +150,7 @@ export const INTAKE_SECTIONS: IntakeSection[] = [
         label: "Any websites you love the look of?",
         type: "textarea",
         placeholder: "Share links to sites whose style you like...",
+        hideForContract: ["widget"],
       },
       {
         id: "brand-guidelines",
@@ -207,6 +208,7 @@ export const INTAKE_SECTIONS: IntakeSection[] = [
     id: "content",
     title: "Content & pages",
     description: "The words, destinations and images that make the site yours.",
+    hideForContract: ["widget"],
     fields: [
       {
         id: "content-about",
@@ -256,6 +258,7 @@ export const INTAKE_SECTIONS: IntakeSection[] = [
     id: "contact",
     title: "Contact & social",
     description: "How customers reach you, and where to find you online.",
+    hideForContract: ["widget"],
     fields: [
       {
         id: "contact-phone",

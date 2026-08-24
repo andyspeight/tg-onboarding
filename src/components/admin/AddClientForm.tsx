@@ -1,6 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import {
+  CONTRACT_TYPE_OPTIONS,
+  type ContractType,
+} from "@/lib/onboarding/contract-type";
 
 const inputClasses =
   "h-11 w-full rounded-md border border-border bg-surface px-3.5 text-[15px] text-fg placeholder:text-fg-faint transition-[border-color,box-shadow] focus:border-accent-bright focus:outline-none focus:ring-[3px] focus:ring-accent-bright/15";
@@ -17,6 +21,7 @@ function todayIso(): string {
  * client detail's Portal access card.
  */
 export function AddClientForm() {
+  const [contractType, setContractType] = useState<ContractType>("full");
   const [company, setCompany] = useState("");
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
@@ -41,6 +46,7 @@ export function AddClientForm() {
           contactName,
           contactEmail,
           plan,
+          contractType,
           accountManager,
           startDate,
         }),
@@ -69,6 +75,44 @@ export function AddClientForm() {
 
   return (
     <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+      <fieldset className="sm:col-span-2">
+        <legend className="mb-1.5 block text-[13px] font-medium text-fg">
+          Contract type<span aria-hidden className="text-danger"> *</span>
+        </legend>
+        <div
+          role="radiogroup"
+          aria-label="Contract type"
+          className="grid gap-2 sm:grid-cols-2"
+        >
+          {CONTRACT_TYPE_OPTIONS.map(({ id, label }) => {
+            const active = contractType === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => setContractType(id)}
+                className={`press cursor-pointer rounded-md border px-4 py-3 text-left transition-colors ${
+                  active
+                    ? "border-accent bg-accent-soft"
+                    : "border-border bg-surface hover:border-border-strong"
+                }`}
+              >
+                <span className="block text-[14px] font-semibold text-fg">
+                  {label}
+                </span>
+                <span className="mt-0.5 block text-[12px] text-fg-muted">
+                  {id === "full"
+                    ? "The full six-phase website build."
+                    : "Slimmer journey — no website build; we collect less."}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
+
       <div>
         <label htmlFor="nc-company" className="mb-1.5 block text-[13px] font-medium text-fg">
           Company<span aria-hidden className="text-danger"> *</span>

@@ -85,6 +85,8 @@ export interface ClientProfile {
   contactName: string;
   /** Package tier, e.g. "Boost". */
   plan?: string;
+  /** Onboarding journey type; defaults to "full" when unset. */
+  contractType?: ContractType;
   /** ISO date string. */
   onboardingStartedAt?: string;
   /** The Travelgenix human looking after this client. */
@@ -109,6 +111,13 @@ export type IntakeFieldType =
   | "multiselect"
   | "upload";
 
+/**
+ * Which onboarding journey a client is on. "widget" clients get a slimmer
+ * journey (no full website build), so some tasks and intake questions are
+ * hidden from them. Blank/legacy clients default to "full".
+ */
+export type ContractType = "full" | "widget";
+
 export interface IntakeField {
   id: string;
   label: string;
@@ -116,6 +125,8 @@ export interface IntakeField {
   placeholder?: string;
   /** Short guidance shown under the label. */
   helper?: string;
+  /** Contract types this field is hidden from (e.g. ["widget"]). */
+  hideForContract?: ContractType[];
   /**
    * For selects and multiselects. Multiselect options come from central
    * lists in the data layer (the supplier list lives in Airtable after the
@@ -132,6 +143,8 @@ export interface IntakeSection {
   description: string;
   /** Only shown to these package tiers; omit to show for all tiers. */
   showForPlans?: string[];
+  /** Contract types this whole section is hidden from (e.g. ["widget"]). */
+  hideForContract?: ContractType[];
   fields: IntakeField[];
 }
 

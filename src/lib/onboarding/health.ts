@@ -90,6 +90,8 @@ export interface AdminClientSummary {
   company: string;
   contactName: string;
   plan?: string;
+  /** Onboarding journey type; defaults to "full" when unset. */
+  contractType: import("./contract-type").ContractType;
   pct: number;
   phaseTitle: string;
   dayCount: number;
